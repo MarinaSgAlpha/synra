@@ -1,8 +1,10 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { nanoid } from 'nanoid'
 
-// GET — fetch current user's profile + organization (bypasses RLS)
+// GET — fetch current user's profile + organization
+// If user/org records don't exist yet (e.g. signup partially failed), create them
 export async function GET() {
   try {
     const supabase = await createServerClient()
@@ -14,18 +16,70 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch user record using admin client (bypasses RLS)
-    const { data: user } = await admin
+    // Try to fetch user record
+    let { data: user } = await admin
       .from('users')
       .select('*')
       .eq('id', authUser.id)
       .single()
 
+    // If user record doesn't exist, create it + org + membership + subscription
     if (!user) {
-      return NextResponse.json({ error: 'User record not found' }, { status: 404 })
+      const name = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User'
+      const email = authUser.email || ''
+      const orgSlug = `org-${nanoid(10)}`
+
+      // Create organization
+      const { data: org, error: orgError } = await admin
+        .from('organizations')
+        .insert({
+          name: `${name}'s Organization`,
+          slug: orgSlug,
+        })
+        .select()
+        .single()
+
+      if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`)
+
+      // Create user record with id = auth user id
+      const { data: newUser, error: userError } = await admin
+        .from('users')
+        .insert({
+          id: authUser.id,
+          email,
+          name,
+        })
+        .select()
+        .single()
+
+      if (userError) throw new Error(`Failed to create user: ${userError.message}`)
+
+      user = newUser
+
+      // Create organization membership
+      await admin
+        .from('organization_members')
+        .insert({
+          organization_id: org.id,
+          user_id: user.id,
+          role: 'owner',
+          status: 'active',
+          joined_at: new Date().toISOString(),
+        })
+
+      // Create free subscription
+      await admin
+        .from('subscriptions')
+        .insert({
+          organization_id: org.id,
+          plan: 'free',
+          status: 'active',
+        })
+
+      return NextResponse.json({ user, organization: org })
     }
 
-    // Fetch organization membership
+    // User exists — fetch organization
     const { data: membership } = await admin
       .from('organization_members')
       .select('organization_id, role')
