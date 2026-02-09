@@ -53,8 +53,15 @@ export default function LoginPage() {
             throw new Error(errorData.error || 'Failed to set up user account')
           }
 
-          setMessage('Account created! Redirecting to dashboard...')
-          setTimeout(() => router.push('/dashboard'), 2000)
+          // Check if email confirmation is required
+          if (data.session) {
+            // No email confirmation needed — go straight to dashboard
+            setMessage('Account created! Redirecting to dashboard...')
+            setTimeout(() => router.push('/dashboard'), 1500)
+          } else {
+            // Email confirmation required — tell user to check email
+            setMessage('Account created! Please check your email to confirm your account, then sign in.')
+          }
         }
       } else {
         // Login flow
