@@ -26,11 +26,11 @@ export default function DashboardPage() {
         return
       }
 
-      // Get user record
+      // Get user record — users.id = auth user id
       const { data: userData } = await supabase
         .from('users')
         .select('*')
-        .eq('auth_user_id', authUser.id)
+        .eq('id', authUser.id)
         .single()
 
       if (userData) {

@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 
@@ -13,13 +13,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerClient()
+    // Use admin client (service role key) to bypass RLS for user setup
+    const supabase = createAdminClient()
 
-    // Check if user already exists (idempotency)
+    // Check if user already exists (idempotency) — users.id = auth user id
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('auth_user_id', userId)
+      .eq('id', userId)
       .single()
 
     if (existingUser) {
@@ -41,11 +42,11 @@ export async function POST(request: NextRequest) {
 
     if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`)
 
-    // 2. Create user record
+    // 2. Create user record — use auth user ID as the users.id
     const { data: user, error: userError } = await supabase
       .from('users')
       .insert({
-        auth_user_id: userId,
+        id: userId,
         email,
         name,
       })
@@ -61,6 +62,8 @@ export async function POST(request: NextRequest) {
         organization_id: org.id,
         user_id: user.id,
         role: 'owner',
+        status: 'active',
+        joined_at: new Date().toISOString(),
       })
 
     if (memberError) throw new Error(`Failed to create membership: ${memberError.message}`)
