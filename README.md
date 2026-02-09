@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Synra - Managed MCP Gateway SaaS
 
-## Getting Started
+This is the main Synra application (separate from the marketing site at mcpserver.design).
 
-First, run the development server:
+## What is Synra?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Synra is a managed MCP (Model Context Protocol) gateway that lets developers connect AI assistants like Claude Desktop to their real databases and tools through a single secure URL — no local config files, no .env headaches.
+
+## Tech Stack
+
+- **Framework:** Next.js 15+ (App Router) with TypeScript
+- **Database:** Supabase (SynraDB)
+- **Auth:** Supabase Auth
+- **Hosting:** TBD (Netlify or Vercel)
+- **Styling:** Tailwind CSS
+
+## Project Structure
+
+```
+synra-app/
+├── app/                    # Next.js App Router pages
+│   ├── page.tsx           # Landing page
+│   ├── login/             # Auth pages
+│   ├── dashboard/         # Protected dashboard
+│   └── api/
+│       └── mcp/           # MCP Gateway API
+├── lib/
+│   ├── supabase/          # Supabase clients
+│   ├── encryption.ts      # AES-256 encryption
+│   └── mcp-handlers/      # MCP tool implementations
+├── types/                 # TypeScript definitions
+├── components/            # React components
+└── middleware.ts          # Auth protection
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Set up environment variables:**
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   
+   Fill in your Supabase credentials and generate an encryption key:
+   ```bash
+   openssl rand -hex 32
+   ```
 
-## Learn More
+3. **Run development server:**
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Open:** http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development Status
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**✅ Task 1 Complete:** Project setup with TypeScript, Supabase, and folder structure
 
-## Deploy on Vercel
+**Next:** Task 2 - Auth system with signup/login and automatic org creation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Environment Variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `.env.local.example` for required environment variables.
+
+## Database Schema
+
+The project uses 12 Supabase tables. See `SYNRA_PROJECT_CONTEXT.md` for full schema documentation.
+
+## Security
+
+- All credentials encrypted at rest with AES-256-GCM
+- Read-only MCP gateway by default
+- SQL sanitization for all queries
+- Rate limiting per endpoint
+- Complete audit logging
