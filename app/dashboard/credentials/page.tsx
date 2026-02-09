@@ -22,6 +22,7 @@ export default function CredentialsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // Form state
   const [selectedService, setSelectedService] = useState<SupportedService | null>(null)
@@ -93,7 +94,8 @@ export default function CredentialsPage() {
         ...prev,
       ])
 
-      setSuccess(`Credential created! Your MCP endpoint: ${endpoint.endpoint_url}`)
+      const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
+      setSuccess(`Credential created! Your MCP endpoint: ${fullUrl}`)
       setShowForm(false)
       setCredName('')
       setConfigValues({})
@@ -290,36 +292,54 @@ export default function CredentialsPage() {
       {/* Credentials list */}
       {credentials.length > 0 ? (
         <div className="space-y-3">
-          {credentials.map((cred) => (
-            <div
-              key={cred.id}
-              className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5 flex items-center justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-white font-medium">{cred.name}</h3>
-                  <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
-                    cred.is_active
-                      ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                      : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
-                  }`}>
-                    {cred.is_active ? 'Active' : 'Inactive'}
-                  </span>
+          {credentials.map((cred) => {
+            const fullEndpointUrl = cred.endpoint_url
+              ? `${typeof window !== 'undefined' ? window.location.origin : ''}${cred.endpoint_url}`
+              : null
+
+            return (
+              <div
+                key={cred.id}
+                className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-white font-medium">{cred.name}</h3>
+                    <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
+                      cred.is_active
+                        ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                        : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
+                    }`}>
+                      {cred.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-600">{cred.service_slug}</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {cred.service_slug} · Created {new Date(cred.created_at).toLocaleDateString()}
-                </p>
-                {cred.endpoint_url && (
-                  <p className="text-xs text-blue-400 mt-1 font-mono">
-                    Endpoint: {cred.endpoint_url}
-                  </p>
+
+                {fullEndpointUrl && (
+                  <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3">
+                    <code className="text-sm text-blue-400 font-mono flex-1 truncate">
+                      {fullEndpointUrl}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(fullEndpointUrl)
+                        setCopiedId(cred.id)
+                        setTimeout(() => setCopiedId(null), 2000)
+                      }}
+                      className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
+                    >
+                      {copiedId === cred.id ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 )}
+
+                <p className="text-xs text-gray-500 mt-3">
+                  Created {new Date(cred.created_at).toLocaleDateString()}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600">ID: {cred.id.slice(0, 8)}...</span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         !showForm && (

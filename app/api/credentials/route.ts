@@ -35,7 +35,26 @@ export async function GET() {
 
     if (error) throw error
 
-    return NextResponse.json({ credentials })
+    // Fetch endpoint URLs for each credential
+    const credentialIds = (credentials || []).map((c: any) => c.id)
+    let endpoints: any[] = []
+
+    if (credentialIds.length > 0) {
+      const { data: endpointData } = await admin
+        .from('mcp_endpoints')
+        .select('credential_id, endpoint_url')
+        .in('credential_id', credentialIds)
+
+      endpoints = endpointData || []
+    }
+
+    // Merge endpoint URLs into credentials
+    const credentialsWithEndpoints = (credentials || []).map((cred: any) => {
+      const endpoint = endpoints.find((e: any) => e.credential_id === cred.id)
+      return { ...cred, endpoint_url: endpoint?.endpoint_url || null }
+    })
+
+    return NextResponse.json({ credentials: credentialsWithEndpoints })
   } catch (error: any) {
     console.error('GET credentials error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
