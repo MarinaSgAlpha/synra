@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 // GET — list supported services
@@ -11,7 +12,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: services, error } = await supabase
+    // Use admin client to bypass RLS
+    const admin = createAdminClient()
+
+    const { data: services, error } = await admin
       .from('supported_services')
       .select('*')
       .eq('is_active', true)

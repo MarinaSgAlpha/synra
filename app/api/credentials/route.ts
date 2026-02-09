@@ -8,14 +8,15 @@ import { nanoid } from 'nanoid'
 export async function GET() {
   try {
     const supabase = await createServerClient()
+    const admin = createAdminClient()
 
     const { data: { user: authUser } } = await supabase.auth.getUser()
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's organization
-    const { data: membership } = await supabase
+    // Get user's organization (admin client bypasses RLS)
+    const { data: membership } = await admin
       .from('organization_members')
       .select('organization_id')
       .eq('user_id', authUser.id)
@@ -26,7 +27,7 @@ export async function GET() {
     }
 
     // Get credentials (without sensitive config data)
-    const { data: credentials, error } = await supabase
+    const { data: credentials, error } = await admin
       .from('credentials')
       .select('id, organization_id, service_slug, name, is_active, created_at, updated_at, last_used_at')
       .eq('organization_id', membership.organization_id)
@@ -58,8 +59,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Get user's organization
-    const { data: membership } = await supabase
+    // Get user's organization (admin client bypasses RLS)
+    const { data: membership } = await admin
       .from('organization_members')
       .select('organization_id')
       .eq('user_id', authUser.id)

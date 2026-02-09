@@ -209,7 +209,7 @@ export default function CredentialsPage() {
             </div>
           ) : (
             /* Step 2: Enter credentials */
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
               <div className="flex items-center gap-2 mb-4">
                 <button
                   type="button"
@@ -250,6 +250,9 @@ export default function CredentialsPage() {
                     }
                     required={field.required}
                     placeholder={field.type === 'url' ? 'https://...' : '••••••••'}
+                    autoComplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
                     className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono"
                   />
                   {field.encrypted && (

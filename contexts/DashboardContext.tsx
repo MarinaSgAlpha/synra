@@ -36,6 +36,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const loadUserData = async () => {
     try {
+      // Check auth session first
       const { data: { user: authUser } } = await supabase.auth.getUser()
 
       if (!authUser) {
@@ -43,33 +44,20 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Get user record — users.id = auth user id
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
-
-      if (userData) {
-        setUser(userData)
-
-        // Get organization via membership
-        const { data: membership } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', userData.id)
-          .single()
-
-        if (membership) {
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', membership.organization_id)
-            .single()
-
-          if (orgData) setOrganization(orgData)
+      // Fetch user + org via API route (bypasses RLS)
+      const res = await fetch('/api/auth/me')
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push('/login')
+          return
         }
+        console.error('Failed to load user data')
+        return
       }
+
+      const data = await res.json()
+      if (data.user) setUser(data.user)
+      if (data.organization) setOrganization(data.organization)
     } catch (error) {
       console.error('Error loading user data:', error)
     } finally {
