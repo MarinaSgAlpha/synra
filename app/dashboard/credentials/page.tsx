@@ -491,7 +491,7 @@ export default function CredentialsPage() {
                   <div className="flex justify-center">
                     <a
                       href="/dashboard/settings"
-                      className="inline-block w-full max-w-[60%] px-4 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
+                      className="inline-block px-6 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center whitespace-nowrap"
                     >
                       Subscribe to Unlock Full Access ($19/mo)
                     </a>

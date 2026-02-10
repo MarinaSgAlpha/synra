@@ -112,36 +112,64 @@ export async function POST(request: NextRequest) {
           `
         })
       
-      // If RPC doesn't exist, try direct REST approach
+      // If RPC doesn't exist, use simpler approach
       if (tableError) {
-        // Fallback: Try to get a count using the REST API metadata
-        // We'll use the health check approach
-        const { error: healthError } = await customerClient.from('_health').select('*').limit(1)
+        // Try any simple query to verify connection
+        // Most Supabase projects have these system tables accessible
+        const testQueries = [
+          customerClient.from('pg_tables').select('tablename').eq('schemaname', 'public').limit(5),
+          customerClient.schema('public').rpc('version'), // PostgreSQL version
+        ]
+
+        let connectionWorks = false
+        let tableCount = 0
+        let sampleTables: string[] = []
+
+        // Try the first query
+        const { data: pgTables, error: pgError } = await testQueries[0]
         
-        // Connection works (even if _health doesn't exist, the request goes through)
+        if (!pgError && pgTables) {
+          connectionWorks = true
+          tableCount = pgTables.length
+          sampleTables = pgTables.slice(0, 3).map((t: any) => t.tablename)
+        } else if (pgError && (
+          pgError.message.includes('does not exist') ||
+          pgError.code === 'PGRST116' ||
+          pgError.message.includes('permission denied')
+        )) {
+          // These errors mean connection works, just no access/no tables
+          connectionWorks = true
+        }
+
         const remainingQueries = hasPaidSubscription 
           ? 'unlimited' 
           : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
-        // Try to infer something useful from the error
-        const isConnected = !healthError || 
-                           healthError.message.includes('does not exist') || 
-                           healthError.code === 'PGRST116' // relation not found = connection works
-
-        if (!isConnected) {
+        if (!connectionWorks) {
           return NextResponse.json({
             success: false,
             error: 'Unable to connect to database',
-            details: healthError?.message || 'Connection refused',
+            details: pgError?.message || 'Invalid credentials or connection refused',
           })
+        }
+
+        // Generate insight
+        let insight = ''
+        if (tableCount === 0) {
+          insight = 'Connection verified! Your database is ready. Subscribe to run AI queries and explore your schema.'
+        } else if (tableCount < 5) {
+          insight = `Found ${tableCount} table${tableCount === 1 ? '' : 's'}. Your database is connected and ready for AI-powered queries.`
+        } else {
+          insight = `Detected ${tableCount}+ tables (${sampleTables.slice(0, 2).join(', ')}...). Subscribe to unlock unlimited AI queries.`
         }
 
         return NextResponse.json({
           success: true,
-          message: 'Connection successful! Database is online.',
+          message: 'Connection successful!',
           sample_data: {
-            connection_verified: true,
-            insight: 'Your database is connected and ready to use. Subscribe to run unlimited queries and see detailed schema information.',
+            table_count: tableCount > 0 ? tableCount : undefined,
+            sample_tables: sampleTables.length > 0 ? sampleTables : undefined,
+            insight,
           },
           remaining_test_queries: remainingQueries,
         })
