@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, email, name } = await request.json()
+    const { userId, email, name, companyName, companySize } = await request.json()
 
     if (!userId || !email || !name) {
       return NextResponse.json(
@@ -30,12 +30,14 @@ export async function POST(request: NextRequest) {
     // Generate unique organization slug
     const orgSlug = `org-${nanoid(10)}`
 
-    // 1. Create organization
+    // 1. Create organization (use company name if provided)
+    const orgName = companyName || `${name}'s Organization`
     const { data: org, error: orgError } = await supabase
       .from('organizations')
       .insert({
-        name: `${name}'s Organization`,
+        name: orgName,
         slug: orgSlug,
+        company_size: companySize || null,
       })
       .select()
       .single()

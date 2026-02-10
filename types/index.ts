@@ -6,6 +6,7 @@ export interface Organization {
   slug: string;
   logo_url: string | null;
   plan: 'free' | 'starter' | 'pro' | 'team';
+  company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
   created_at: string;
   updated_at: string;
 }

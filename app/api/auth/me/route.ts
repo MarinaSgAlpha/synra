@@ -26,14 +26,16 @@ export async function GET() {
     // If user record doesn't exist, create it + org + membership + subscription
     if (!user) {
       const name = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User'
+      const companyName = authUser.user_metadata?.company_name
       const email = authUser.email || ''
       const orgSlug = `org-${nanoid(10)}`
 
-      // Create organization
+      // Create organization (use company name if available)
+      const orgName = companyName || `${name}'s Organization`
       const { data: org, error: orgError } = await admin
         .from('organizations')
         .insert({
-          name: `${name}'s Organization`,
+          name: orgName,
           slug: orgSlug,
         })
         .select()

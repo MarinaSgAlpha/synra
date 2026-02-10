@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [companySize, setCompanySize] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +32,8 @@ export default function LoginPage() {
           options: {
             data: {
               name,
+              company_name: companyName,
+              company_size: companySize,
             },
           },
         })
@@ -45,6 +49,8 @@ export default function LoginPage() {
               userId: data.user.id,
               email: data.user.email,
               name,
+              companyName,
+              companySize,
             }),
           })
 
@@ -110,19 +116,55 @@ export default function LoginPage() {
 
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="Your name"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    placeholder="Your name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
+                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    placeholder="Your company or project name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Company Size
+                  </label>
+                  <select
+                    value={companySize}
+                    onChange={(e) => setCompanySize(e.target.value)}
+                    required
+                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none appearance-none"
+                  >
+                    <option value="" disabled>Select team size</option>
+                    <option value="solo">Solo / Freelancer</option>
+                    <option value="2-10">2–10 employees</option>
+                    <option value="11-50">11–50 employees</option>
+                    <option value="51-200">51–200 employees</option>
+                    <option value="201-1000">201–1,000 employees</option>
+                    <option value="1000+">1,000+ employees</option>
+                  </select>
+                </div>
+              </>
             )}
 
             <div>

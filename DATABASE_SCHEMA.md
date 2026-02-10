@@ -30,6 +30,7 @@
 | slug | text | NOT NULL, UNIQUE |
 | logo_url | text | nullable |
 | plan | text | NOT NULL, DEFAULT 'free', CHECK (free, starter, pro, team) |
+| company_size | text | nullable, CHECK (solo, 2-10, 11-50, 51-200, 201-1000, 1000+) |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
 | updated_at | timestamptz | NOT NULL, DEFAULT now() |
 
