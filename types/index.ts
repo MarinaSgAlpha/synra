@@ -5,7 +5,7 @@ export interface Organization {
   name: string;
   slug: string;
   logo_url: string | null;
-  plan: 'starter' | 'pro' | 'team';
+  plan: 'free' | 'starter' | 'pro' | 'team';
   company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
   created_at: string;
   updated_at: string;

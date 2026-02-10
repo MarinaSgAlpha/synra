@@ -370,20 +370,24 @@ export default function CredentialsPage() {
                   <span className="text-xs text-gray-600">{cred.service_slug}</span>
                 </div>
 
-                {/* MCP Endpoint URL - Blurred for unpaid users */}
+                {/* MCP Endpoint URL - Partially visible for unpaid users */}
                 {fullEndpointUrl && (
                   <div className="mb-4">
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">
                       MCP Endpoint URL
                     </label>
                     <div className="relative">
-                      <div className={`flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3 ${
-                        !hasPaidSubscription ? 'blur-sm select-none pointer-events-none' : ''
-                      }`}>
+                      <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3">
                         <code className="text-sm text-blue-400 font-mono flex-1 truncate">
-                          {fullEndpointUrl}
+                          {hasPaidSubscription ? fullEndpointUrl : (() => {
+                            // Show first part and last part, blur the middle
+                            const url = new URL(fullEndpointUrl)
+                            const pathParts = url.pathname.split('/')
+                            const lastPart = pathParts[pathParts.length - 1]
+                            return `${url.origin}/api/mcp/••••••${lastPart.slice(-4)}`
+                          })()}
                         </code>
-                        {hasPaidSubscription && (
+                        {hasPaidSubscription ? (
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(fullEndpointUrl)
@@ -394,17 +398,12 @@ export default function CredentialsPage() {
                           >
                             {copiedId === cred.id ? 'Copied!' : 'Copy'}
                           </button>
+                        ) : (
+                          <span className="px-3 py-1 text-xs text-gray-500 flex-shrink-0">
+                            🔒 Hidden
+                          </span>
                         )}
                       </div>
-                      
-                      {/* Unlock overlay for unpaid users */}
-                      {!hasPaidSubscription && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="bg-[#0a0a0a]/95 px-4 py-2 rounded-lg border border-[#1c1c1c]">
-                            <p className="text-xs text-gray-400">🔒 Subscribe to unlock URL</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -443,13 +442,26 @@ export default function CredentialsPage() {
                           {testResult.success ? '✅ ' : '❌ '}
                           {testResult.message || testResult.error}
                         </p>
-                        {testResult.sample_data && (
+                        {testResult.success && testResult.sample_data && (
                           <div className="text-xs text-gray-300 space-y-1">
-                            <p>• Found {testResult.sample_data.tables_found} tables</p>
+                            {testResult.sample_data.tables_found !== undefined && (
+                              <p>• Found {testResult.sample_data.tables_found} tables</p>
+                            )}
                             {testResult.sample_data.sample_tables?.length > 0 && (
                               <p>• Sample: {testResult.sample_data.sample_tables.join(', ')}</p>
                             )}
+                            {testResult.sample_data.connection_verified && (
+                              <p>• Database connection verified</p>
+                            )}
+                            {testResult.sample_data.note && (
+                              <p className="text-gray-400 italic">• {testResult.sample_data.note}</p>
+                            )}
                           </div>
+                        )}
+                        {testResult.details && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Details: {testResult.details}
+                          </p>
                         )}
                         {testResult.limit_reached && (
                           <p className="text-xs text-yellow-400 mt-2">
@@ -463,12 +475,14 @@ export default function CredentialsPage() {
 
                 {/* Subscribe Button */}
                 {!hasPaidSubscription && (
-                  <a
-                    href="/dashboard/settings"
-                    className="block w-full px-4 py-3 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
-                  >
-                    Subscribe to Unlock Full Access ($19/mo)
-                  </a>
+                  <div className="flex justify-center">
+                    <a
+                      href="/dashboard/settings"
+                      className="inline-block w-full max-w-[75%] px-4 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
+                    >
+                      Subscribe to Unlock Full Access ($19/mo)
+                    </a>
+                  </div>
                 )}
 
                 <p className="text-xs text-gray-500 mt-3">

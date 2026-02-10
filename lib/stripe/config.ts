@@ -23,8 +23,19 @@ export const stripe = new Proxy({} as Stripe, {
   },
 })
 
-// Pricing plans
+// Pricing plans (free plan hidden from UI but exists for legacy/grandfathered users)
 export const PLANS = {
+  free: {
+    name: 'Free',
+    price: 0,
+    priceId: null,
+    features: [
+      '1 credential',
+      '100 requests/day',
+      'Read-only access',
+      'Basic support',
+    ],
+  },
   starter: {
     name: 'Starter',
     price: 19,
