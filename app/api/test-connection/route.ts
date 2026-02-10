@@ -98,49 +98,83 @@ export async function POST(request: NextRequest) {
         auth: { persistSession: false }
       })
       
-      // Test connection with a simple query to get schema info using RPC
-      // We'll call a PostgreSQL function to list tables
-      const { data, error } = await customerClient.rpc('get_schema_info', {})
+      // Get actual table information using PostgreSQL system tables
+      // This works because we can use the REST API to query pg_catalog
+      const { data: tables, error: tableError } = await customerClient
+        .rpc('exec_sql', {
+          query: `
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+            LIMIT 10
+          `
+        })
       
-      // If RPC fails (function doesn't exist), try a simple query on any existing table
-      if (error) {
-        // Fallback: just test if we can connect by querying auth schema
-        const { error: authError } = await customerClient.auth.getSession()
+      // If RPC doesn't exist, try direct REST approach
+      if (tableError) {
+        // Fallback: Try to get a count using the REST API metadata
+        // We'll use the health check approach
+        const { error: healthError } = await customerClient.from('_health').select('*').limit(1)
         
-        if (authError && authError.message.includes('Invalid')) {
-          return NextResponse.json({
-            success: false,
-            error: 'Invalid credentials or connection refused',
-            details: authError.message,
-          })
-        }
-
-        // Connection works but no custom RPC - that's OK
+        // Connection works (even if _health doesn't exist, the request goes through)
         const remainingQueries = hasPaidSubscription 
           ? 'unlimited' 
           : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
+        // Try to infer something useful from the error
+        const isConnected = !healthError || 
+                           healthError.message.includes('does not exist') || 
+                           healthError.code === 'PGRST116' // relation not found = connection works
+
+        if (!isConnected) {
+          return NextResponse.json({
+            success: false,
+            error: 'Unable to connect to database',
+            details: healthError?.message || 'Connection refused',
+          })
+        }
+
         return NextResponse.json({
           success: true,
-          message: 'Connection successful! ✅',
+          message: 'Connection successful! Database is online.',
           sample_data: {
             connection_verified: true,
-            note: 'Connection established. Full query testing available after subscription.',
+            insight: 'Your database is connected and ready to use. Subscribe to run unlimited queries and see detailed schema information.',
           },
           remaining_test_queries: remainingQueries,
         })
       }
 
+      // Success - we got real table data!
+      const tableList = Array.isArray(tables) ? tables : []
+      const tableCount = tableList.length
+      const sampleTables = tableList.slice(0, 3).map((t: any) => t.table_name)
+
       const remainingQueries = hasPaidSubscription 
         ? 'unlimited' 
         : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
+      // Generate insight based on table count
+      let insight = ''
+      if (tableCount === 0) {
+        insight = 'Your database is empty. You can start creating tables and querying them through Claude!'
+      } else if (tableCount < 5) {
+        insight = `Found ${tableCount} table${tableCount === 1 ? '' : 's'}. Your database is set up and ready for AI queries.`
+      } else if (tableCount < 10) {
+        insight = `Detected ${tableCount} tables including ${sampleTables.slice(0, 2).join(', ')}. Good schema size for AI exploration.`
+      } else {
+        insight = `Found ${tableCount}+ tables (showing ${sampleTables.join(', ')}...). Substantial database ready for AI-powered queries.`
+      }
+
       return NextResponse.json({
         success: true,
-        message: 'Connection successful! ✅',
+        message: 'Connection successful!',
         sample_data: {
-          schema_info: data,
-          connection_verified: true,
+          table_count: tableCount,
+          sample_tables: sampleTables,
+          insight,
         },
         remaining_test_queries: remainingQueries,
       })

@@ -443,18 +443,31 @@ export default function CredentialsPage() {
                           {testResult.message || testResult.error}
                         </p>
                         {testResult.success && testResult.sample_data && (
-                          <div className="text-xs text-gray-300 space-y-1">
-                            {testResult.sample_data.tables_found !== undefined && (
-                              <p>• Found {testResult.sample_data.tables_found} tables</p>
+                          <div className="text-xs text-gray-300 space-y-1.5">
+                            {/* Show table count if available */}
+                            {testResult.sample_data.table_count !== undefined && (
+                              <p className="font-medium">
+                                📊 {testResult.sample_data.table_count === 0 
+                                  ? 'No tables yet' 
+                                  : `${testResult.sample_data.table_count} table${testResult.sample_data.table_count === 1 ? '' : 's'} detected`}
+                              </p>
                             )}
+                            
+                            {/* Show sample tables if available */}
                             {testResult.sample_data.sample_tables?.length > 0 && (
-                              <p>• Sample: {testResult.sample_data.sample_tables.join(', ')}</p>
+                              <p>
+                                <span className="text-gray-400">Sample tables:</span>{' '}
+                                <span className="text-blue-400 font-mono text-[11px]">
+                                  {testResult.sample_data.sample_tables.join(', ')}
+                                </span>
+                              </p>
                             )}
-                            {testResult.sample_data.connection_verified && (
-                              <p>• Database connection verified</p>
-                            )}
-                            {testResult.sample_data.note && (
-                              <p className="text-gray-400 italic">• {testResult.sample_data.note}</p>
+                            
+                            {/* Show AI insight */}
+                            {testResult.sample_data.insight && (
+                              <p className="text-gray-300 pt-1 border-t border-gray-700/50 italic">
+                                💬 {testResult.sample_data.insight}
+                              </p>
                             )}
                           </div>
                         )}
@@ -478,7 +491,7 @@ export default function CredentialsPage() {
                   <div className="flex justify-center">
                     <a
                       href="/dashboard/settings"
-                      className="inline-block w-full max-w-[75%] px-4 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
+                      className="inline-block w-full max-w-[60%] px-4 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
                     >
                       Subscribe to Unlock Full Access ($19/mo)
                     </a>
