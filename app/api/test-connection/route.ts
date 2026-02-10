@@ -94,17 +94,13 @@ export async function POST(request: NextRequest) {
 
     // Create Supabase client and test connection
     try {
-      const customerClient = createClient(supabaseUrl, apiKey, {
-        auth: { persistSession: false }
-      })
-      
-      // Simple test: Make a REST API request to verify credentials work
-      // We'll hit the REST API root to check if the URL and key are valid
-      const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-        method: 'HEAD',
+      // Get the OpenAPI schema from PostgREST - this lists all available tables
+      const schemaResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        method: 'GET',
         headers: {
           'apikey': apiKey,
           'Authorization': `Bearer ${apiKey}`,
+          'Accept': 'application/openapi+json',
         },
       })
 
@@ -112,8 +108,8 @@ export async function POST(request: NextRequest) {
         ? 'unlimited' 
         : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
-      // If we get any response (even 404), credentials are valid
-      if (!testResponse.ok && testResponse.status === 401) {
+      // Check for auth errors
+      if (!schemaResponse.ok && schemaResponse.status === 401) {
         return NextResponse.json({
           success: false,
           error: 'Invalid API key or unauthorized',
@@ -121,16 +117,46 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Connection works! Now generate a helpful insight
-      const insight = 'Your Supabase connection is live and ready! Subscribe to run unlimited AI-powered queries across your entire database schema.'
+      // Parse the OpenAPI schema to get table names
+      let tables: string[] = []
+      let tableCount = 0
+      
+      try {
+        const schema = await schemaResponse.json()
+        // OpenAPI schema has paths like "/table_name" for each table
+        if (schema.paths) {
+          tables = Object.keys(schema.paths)
+            .filter(path => path.startsWith('/') && !path.includes('{'))
+            .map(path => path.substring(1)) // remove leading slash
+            .filter(name => !name.startsWith('rpc/')) // exclude RPC functions
+            .sort()
+          tableCount = tables.length
+        }
+      } catch (e) {
+        // If we can't parse schema, that's OK - connection still works
+      }
+
+      // Generate Claude's personalized message
+      let claudeMessage = ''
+      if (tableCount === 0) {
+        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them, analyze your data, and help you build amazing things!"
+      } else if (tableCount === 1) {
+        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data, run analytics, and help you understand what's inside. Subscribe to unlock unlimited queries!`
+      } else if (tableCount <= 5) {
+        const tableList = tables.slice(0, 3).join(', ')
+        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run complex queries, and help you analyze everything. Let's unlock the full power together!`
+      } else {
+        const sampleTables = tables.slice(0, 3).join(', ')
+        claudeMessage = `Hello! I'm Claude 👋 Your database looks great – I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, analyze patterns, and help you build. Subscribe to let me show you what I can do!`
+      }
 
       return NextResponse.json({
         success: true,
         message: 'Connection successful!',
         sample_data: {
-          connection_verified: true,
-          supabase_url: new URL(supabaseUrl).hostname,
-          insight,
+          table_count: tableCount,
+          sample_tables: tables.slice(0, 5),
+          claude_says: claudeMessage,
         },
         remaining_test_queries: remainingQueries,
       })

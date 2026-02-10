@@ -443,29 +443,35 @@ export default function CredentialsPage() {
                           {testResult.message || testResult.error}
                         </p>
                         {testResult.success && testResult.sample_data && (
-                          <div className="text-xs text-gray-300 space-y-1.5">
-                            {/* Show connection info */}
-                            {testResult.sample_data.connection_verified && (
-                              <p className="font-medium text-green-400">
-                                ✓ Database credentials verified
-                              </p>
+                          <div className="text-xs text-gray-300 space-y-2">
+                            {/* Show table count */}
+                            {testResult.sample_data.table_count !== undefined && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">📊</span>
+                                <div>
+                                  <p className="font-medium text-white">
+                                    {testResult.sample_data.table_count === 0 
+                                      ? 'No tables yet' 
+                                      : `${testResult.sample_data.table_count} table${testResult.sample_data.table_count === 1 ? '' : 's'} detected`}
+                                  </p>
+                                  {testResult.sample_data.sample_tables?.length > 0 && (
+                                    <p className="text-gray-400 text-[11px] mt-0.5">
+                                      <span className="font-mono text-blue-400">
+                                        {testResult.sample_data.sample_tables.join(', ')}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             )}
                             
-                            {/* Show Supabase URL */}
-                            {testResult.sample_data.supabase_url && (
-                              <p>
-                                <span className="text-gray-400">Supabase:</span>{' '}
-                                <span className="text-blue-400 font-mono text-[11px]">
-                                  {testResult.sample_data.supabase_url}
-                                </span>
-                              </p>
-                            )}
-                            
-                            {/* Show AI insight */}
-                            {testResult.sample_data.insight && (
-                              <p className="text-gray-300 pt-2 border-t border-gray-700/50 italic">
-                                💬 {testResult.sample_data.insight}
-                              </p>
+                            {/* Claude's message */}
+                            {testResult.sample_data.claude_says && (
+                              <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mt-2">
+                                <p className="text-sm text-gray-200 leading-relaxed">
+                                  {testResult.sample_data.claude_says}
+                                </p>
+                              </div>
                             )}
                           </div>
                         )}
