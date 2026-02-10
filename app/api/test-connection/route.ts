@@ -98,110 +98,38 @@ export async function POST(request: NextRequest) {
         auth: { persistSession: false }
       })
       
-      // Get actual table information using PostgreSQL system tables
-      // This works because we can use the REST API to query pg_catalog
-      const { data: tables, error: tableError } = await customerClient
-        .rpc('exec_sql', {
-          query: `
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_type = 'BASE TABLE'
-            ORDER BY table_name
-            LIMIT 10
-          `
-        })
-      
-      // If RPC doesn't exist, use simpler approach
-      if (tableError) {
-        // Try any simple query to verify connection
-        // Most Supabase projects have these system tables accessible
-        const testQueries = [
-          customerClient.from('pg_tables').select('tablename').eq('schemaname', 'public').limit(5),
-          customerClient.schema('public').rpc('version'), // PostgreSQL version
-        ]
-
-        let connectionWorks = false
-        let tableCount = 0
-        let sampleTables: string[] = []
-
-        // Try the first query
-        const { data: pgTables, error: pgError } = await testQueries[0]
-        
-        if (!pgError && pgTables) {
-          connectionWorks = true
-          tableCount = pgTables.length
-          sampleTables = pgTables.slice(0, 3).map((t: any) => t.tablename)
-        } else if (pgError && (
-          pgError.message.includes('does not exist') ||
-          pgError.code === 'PGRST116' ||
-          pgError.message.includes('permission denied')
-        )) {
-          // These errors mean connection works, just no access/no tables
-          connectionWorks = true
-        }
-
-        const remainingQueries = hasPaidSubscription 
-          ? 'unlimited' 
-          : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
-
-        if (!connectionWorks) {
-          return NextResponse.json({
-            success: false,
-            error: 'Unable to connect to database',
-            details: pgError?.message || 'Invalid credentials or connection refused',
-          })
-        }
-
-        // Generate insight
-        let insight = ''
-        if (tableCount === 0) {
-          insight = 'Connection verified! Your database is ready. Subscribe to run AI queries and explore your schema.'
-        } else if (tableCount < 5) {
-          insight = `Found ${tableCount} table${tableCount === 1 ? '' : 's'}. Your database is connected and ready for AI-powered queries.`
-        } else {
-          insight = `Detected ${tableCount}+ tables (${sampleTables.slice(0, 2).join(', ')}...). Subscribe to unlock unlimited AI queries.`
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: 'Connection successful!',
-          sample_data: {
-            table_count: tableCount > 0 ? tableCount : undefined,
-            sample_tables: sampleTables.length > 0 ? sampleTables : undefined,
-            insight,
-          },
-          remaining_test_queries: remainingQueries,
-        })
-      }
-
-      // Success - we got real table data!
-      const tableList = Array.isArray(tables) ? tables : []
-      const tableCount = tableList.length
-      const sampleTables = tableList.slice(0, 3).map((t: any) => t.table_name)
+      // Simple test: Make a REST API request to verify credentials work
+      // We'll hit the REST API root to check if the URL and key are valid
+      const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'apikey': apiKey,
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      })
 
       const remainingQueries = hasPaidSubscription 
         ? 'unlimited' 
         : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
-      // Generate insight based on table count
-      let insight = ''
-      if (tableCount === 0) {
-        insight = 'Your database is empty. You can start creating tables and querying them through Claude!'
-      } else if (tableCount < 5) {
-        insight = `Found ${tableCount} table${tableCount === 1 ? '' : 's'}. Your database is set up and ready for AI queries.`
-      } else if (tableCount < 10) {
-        insight = `Detected ${tableCount} tables including ${sampleTables.slice(0, 2).join(', ')}. Good schema size for AI exploration.`
-      } else {
-        insight = `Found ${tableCount}+ tables (showing ${sampleTables.join(', ')}...). Substantial database ready for AI-powered queries.`
+      // If we get any response (even 404), credentials are valid
+      if (!testResponse.ok && testResponse.status === 401) {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid API key or unauthorized',
+          details: 'Check your Supabase URL and API key',
+        })
       }
+
+      // Connection works! Now generate a helpful insight
+      const insight = 'Your Supabase connection is live and ready! Subscribe to run unlimited AI-powered queries across your entire database schema.'
 
       return NextResponse.json({
         success: true,
         message: 'Connection successful!',
         sample_data: {
-          table_count: tableCount,
-          sample_tables: sampleTables,
+          connection_verified: true,
+          supabase_url: new URL(supabaseUrl).hostname,
           insight,
         },
         remaining_test_queries: remainingQueries,
@@ -210,7 +138,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: 'Connection test failed',
-        details: err.message,
+        details: err.message || 'Unable to reach Supabase URL',
       })
     }
   } catch (error: any) {

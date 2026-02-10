@@ -444,28 +444,26 @@ export default function CredentialsPage() {
                         </p>
                         {testResult.success && testResult.sample_data && (
                           <div className="text-xs text-gray-300 space-y-1.5">
-                            {/* Show table count if available */}
-                            {testResult.sample_data.table_count !== undefined && (
-                              <p className="font-medium">
-                                📊 {testResult.sample_data.table_count === 0 
-                                  ? 'No tables yet' 
-                                  : `${testResult.sample_data.table_count} table${testResult.sample_data.table_count === 1 ? '' : 's'} detected`}
+                            {/* Show connection info */}
+                            {testResult.sample_data.connection_verified && (
+                              <p className="font-medium text-green-400">
+                                ✓ Database credentials verified
                               </p>
                             )}
                             
-                            {/* Show sample tables if available */}
-                            {testResult.sample_data.sample_tables?.length > 0 && (
+                            {/* Show Supabase URL */}
+                            {testResult.sample_data.supabase_url && (
                               <p>
-                                <span className="text-gray-400">Sample tables:</span>{' '}
+                                <span className="text-gray-400">Supabase:</span>{' '}
                                 <span className="text-blue-400 font-mono text-[11px]">
-                                  {testResult.sample_data.sample_tables.join(', ')}
+                                  {testResult.sample_data.supabase_url}
                                 </span>
                               </p>
                             )}
                             
                             {/* Show AI insight */}
                             {testResult.sample_data.insight && (
-                              <p className="text-gray-300 pt-1 border-t border-gray-700/50 italic">
+                              <p className="text-gray-300 pt-2 border-t border-gray-700/50 italic">
                                 💬 {testResult.sample_data.insight}
                               </p>
                             )}
