@@ -348,7 +348,7 @@ export default function CredentialsPage() {
               ? `${typeof window !== 'undefined' ? window.location.origin : ''}${cred.endpoint_url}`
               : null
             const testQueriesUsed = cred.test_queries_used || 0
-            const testQueriesRemaining = 3 - testQueriesUsed
+            const testQueriesRemaining = 10 - testQueriesUsed
             const testResult = testResults[cred.id]
 
             return (

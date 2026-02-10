@@ -4,7 +4,7 @@ import { decrypt } from '@/lib/encryption'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const MAX_TEST_QUERIES = 3
+const MAX_TEST_QUERIES = 10
 
 // POST — Execute a test query to show value (max 3 free queries)
 export async function POST(request: NextRequest) {
