@@ -89,6 +89,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No organization found' }, { status: 404 })
     }
 
+    // Check if organization can create more credentials (plan limit)
+    const { canCreateCredential } = await import('@/lib/usage-limits')
+    const usageCheck = await canCreateCredential(membership.organization_id)
+    
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ 
+        error: usageCheck.reason || 'Cannot create credential',
+        upgrade_required: true,
+      }, { status: 403 })
+    }
+
     // Encrypt sensitive config values
     const encryptedConfig: Record<string, string> = {}
     for (const [key, value] of Object.entries(config)) {

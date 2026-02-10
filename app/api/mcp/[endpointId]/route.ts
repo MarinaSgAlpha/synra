@@ -147,6 +147,19 @@ export async function POST(
     return jsonRpcError(id, -32001, 'Credential not found or inactive')
   }
 
+  // ── Check usage limits ────────────────────────────────────────────
+
+  const { canMakeRequest } = await import('@/lib/usage-limits')
+  const usageCheck = await canMakeRequest(endpoint.organization_id)
+
+  if (!usageCheck.allowed) {
+    return jsonRpcError(
+      id,
+      -32003,
+      usageCheck.reason || 'Rate limit exceeded. Please upgrade your plan.'
+    )
+  }
+
   // ── Update last_accessed_at ───────────────────────────────────────
 
   const admin = createAdminClient()

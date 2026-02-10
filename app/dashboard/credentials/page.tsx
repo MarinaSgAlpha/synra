@@ -84,7 +84,16 @@ export default function CredentialsPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Failed to create credential')
+        
+        // Handle upgrade requirement
+        if (data.upgrade_required) {
+          setError(`${data.error} - Upgrade your plan to add more credentials.`)
+        } else {
+          setError(data.error || 'Failed to create credential')
+        }
+        
+        setSaving(false)
+        return
       }
 
       const { credential, endpoint } = await res.json()
