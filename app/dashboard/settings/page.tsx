@@ -5,20 +5,9 @@ import { useState } from 'react'
 
 const PLANS = [
   {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    features: [
-      '1 credential',
-      '100 requests/day',
-      'Read-only access',
-      'Basic support',
-    ],
-  },
-  {
     id: 'starter',
     name: 'Starter',
-    price: 29,
+    price: 19,
     features: [
       '5 credentials',
       '10,000 requests/day',
@@ -58,10 +47,9 @@ export default function SettingsPage() {
   const { organization } = useDashboard()
   const [loading, setLoading] = useState<string | null>(null)
 
-  const currentPlan = organization?.plan || 'free'
+  const currentPlan = organization?.plan || 'starter'
 
   const handleUpgrade = async (planId: string) => {
-    if (planId === 'free') return
 
     setLoading(planId)
     try {
@@ -186,11 +174,11 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => handleUpgrade(plan.id)}
-                disabled={isCurrent || isDowngrade || loading === plan.id || plan.id === 'free'}
+                disabled={isCurrent || isDowngrade || loading === plan.id}
                 className={`w-full py-2 rounded-lg font-medium transition-colors ${
                   isCurrent
                     ? 'bg-[#1c1c1c] text-gray-500 cursor-default'
-                    : isDowngrade || plan.id === 'free'
+                    : isDowngrade
                     ? 'bg-[#1c1c1c] text-gray-500 cursor-not-allowed'
                     : 'bg-white text-black hover:bg-gray-200'
                 } disabled:opacity-50`}
@@ -201,8 +189,6 @@ export default function SettingsPage() {
                   ? 'Current Plan'
                   : isDowngrade
                   ? 'Contact Sales'
-                  : plan.id === 'free'
-                  ? 'Free Forever'
                   : 'Upgrade'}
               </button>
             </div>

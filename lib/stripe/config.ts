@@ -25,20 +25,9 @@ export const stripe = new Proxy({} as Stripe, {
 
 // Pricing plans
 export const PLANS = {
-  free: {
-    name: 'Free',
-    price: 0,
-    priceId: null,
-    features: [
-      '1 credential',
-      '100 requests/day',
-      'Read-only access',
-      'Basic support',
-    ],
-  },
   starter: {
     name: 'Starter',
-    price: 29,
+    price: 19,
     priceId: process.env.STRIPE_PRICE_ID_STARTER,
     features: [
       '5 credentials',

@@ -70,12 +70,12 @@ export async function POST(request: NextRequest) {
 
     if (memberError) throw new Error(`Failed to create membership: ${memberError.message}`)
 
-    // 4. Create free subscription
+    // 4. Create starter subscription
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: org.id,
-        plan: 'free',
+        plan: 'starter',
         status: 'active',
       })
 

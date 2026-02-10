@@ -2,11 +2,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 // Plan limits
 export const PLAN_LIMITS = {
-  free: {
-    max_credentials: 1,
-    daily_requests: 100,
-    features: ['read_only'],
-  },
   starter: {
     max_credentials: 5,
     daily_requests: 10000,

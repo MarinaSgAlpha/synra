@@ -11,10 +11,10 @@
 
 Create three subscription products in Stripe:
 
-### Starter Plan ($29/month)
+### Starter Plan ($19/month)
 1. Go to **Products** → **Add Product**
 2. Name: "Starter"
-3. Pricing: Recurring, $29 USD, Monthly
+3. Pricing: Recurring, $19 USD, Monthly
 4. Save and copy the **Price ID** (starts with `price_...`)
 
 ### Pro Plan ($99/month)
@@ -94,12 +94,13 @@ stripe trigger customer.subscription.updated
 
 ## Current Plan Limits
 
-| Plan | Credentials | Daily Requests | Features |
-|------|-------------|----------------|----------|
-| Free | 1 | 100 | Read-only, Basic support |
-| Starter | 5 | 10,000 | Read-only, Email support |
-| Pro | Unlimited | 100,000 | Read+Write, Priority support, Analytics |
-| Team | Unlimited | Unlimited | Everything + SSO, SLA, Dedicated support |
+| Plan | Price | Credentials | Daily Requests | Features |
+|------|-------|-------------|----------------|----------|
+| Starter | $19/mo | 5 | 10,000 | Read-only, Email support |
+| Pro | $99/mo | Unlimited | 100,000 | Read+Write, Priority support, Analytics |
+| Team | $299/mo | Unlimited | Unlimited | Everything + SSO, SLA, Dedicated support |
+
+**Note:** No free tier. All new signups start on Starter plan.
 
 ## Troubleshooting
 

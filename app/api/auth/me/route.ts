@@ -69,12 +69,12 @@ export async function GET() {
           joined_at: new Date().toISOString(),
         })
 
-      // Create free subscription
+      // Create starter subscription
       await admin
         .from('subscriptions')
         .insert({
           organization_id: org.id,
-          plan: 'free',
+          plan: 'starter',
           status: 'active',
         })
 
