@@ -1,7 +1,7 @@
 'use client'
 
 import { useDashboard } from '@/contexts/DashboardContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const PLANS = [
   {
@@ -46,8 +46,25 @@ const PLANS = [
 export default function SettingsPage() {
   const { organization } = useDashboard()
   const [loading, setLoading] = useState<string | null>(null)
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false)
 
   const currentPlan = organization?.plan || 'starter'
+
+  // Check if user has Stripe customer ID
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const { subscription } = await res.json()
+          setHasStripeCustomer(!!subscription?.stripe_customer_id)
+        }
+      } catch (err) {
+        console.error('Error checking subscription:', err)
+      }
+    }
+    checkSubscription()
+  }, [])
 
   const handleUpgrade = async (planId: string) => {
 
@@ -106,17 +123,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Current Plan */}
-      {currentPlan !== 'free' && (
-        <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Current Plan: <span className="text-blue-400">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span>
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">
-                Manage your subscription, payment method, and billing history
-              </p>
-            </div>
+      <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Current Plan: <span className="text-blue-400">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span>
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              {hasStripeCustomer
+                ? 'Manage your subscription, payment method, and billing history'
+                : 'Add payment method to activate your subscription'}
+            </p>
+          </div>
+          {hasStripeCustomer && (
             <button
               onClick={handleManageBilling}
               disabled={loading === 'portal'}
@@ -124,9 +143,9 @@ export default function SettingsPage() {
             >
               {loading === 'portal' ? 'Loading...' : 'Manage Billing'}
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Pricing Plans */}
       <div className="grid md:grid-cols-4 gap-6">

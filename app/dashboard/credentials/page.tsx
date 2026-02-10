@@ -11,10 +11,11 @@ interface CredentialWithEndpoint {
   is_active: boolean
   created_at: string
   endpoint_url?: string
+  test_queries_used?: number
 }
 
 export default function CredentialsPage() {
-  const { user } = useDashboard()
+  const { user, organization } = useDashboard()
   const [credentials, setCredentials] = useState<CredentialWithEndpoint[]>([])
   const [services, setServices] = useState<SupportedService[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +24,9 @@ export default function CredentialsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [hasPaidSubscription, setHasPaidSubscription] = useState(false)
+  const [testResults, setTestResults] = useState<Record<string, any>>({})
+  const [testingId, setTestingId] = useState<string | null>(null)
 
   // Form state
   const [selectedService, setSelectedService] = useState<SupportedService | null>(null)
@@ -35,9 +39,10 @@ export default function CredentialsPage() {
 
   const loadData = async () => {
     try {
-      const [credRes, svcRes] = await Promise.all([
+      const [credRes, svcRes, subRes] = await Promise.all([
         fetch('/api/credentials'),
         fetch('/api/services'),
+        fetch('/api/auth/me'),
       ])
 
       if (credRes.ok) {
@@ -49,10 +54,47 @@ export default function CredentialsPage() {
         const { services: svcs } = await svcRes.json()
         setServices(svcs || [])
       }
+
+      // Check if user has paid subscription
+      if (subRes.ok) {
+        const { subscription } = await subRes.json()
+        // User has paid if they have a Stripe subscription ID and it's active
+        const hasPaid = subscription?.stripe_subscription_id && subscription?.status === 'active'
+        setHasPaidSubscription(hasPaid || false)
+      }
     } catch (err) {
       console.error('Error loading data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTestConnection = async (credentialId: string) => {
+    setTestingId(credentialId)
+    setTestResults((prev) => ({ ...prev, [credentialId]: null }))
+    
+    try {
+      const res = await fetch('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credentialId }),
+      })
+
+      const data = await res.json()
+      setTestResults((prev) => ({ ...prev, [credentialId]: data }))
+
+      if (data.success) {
+        // Reload credentials to get updated test_queries_used count
+        await loadData()
+      }
+    } catch (err) {
+      console.error('Test connection error:', err)
+      setTestResults((prev) => ({ 
+        ...prev, 
+        [credentialId]: { success: false, error: 'Connection test failed' } 
+      }))
+    } finally {
+      setTestingId(null)
     }
   }
 
@@ -305,6 +347,9 @@ export default function CredentialsPage() {
             const fullEndpointUrl = cred.endpoint_url
               ? `${typeof window !== 'undefined' ? window.location.origin : ''}${cred.endpoint_url}`
               : null
+            const testQueriesUsed = cred.test_queries_used || 0
+            const testQueriesRemaining = 3 - testQueriesUsed
+            const testResult = testResults[cred.id]
 
             return (
               <div
@@ -325,22 +370,105 @@ export default function CredentialsPage() {
                   <span className="text-xs text-gray-600">{cred.service_slug}</span>
                 </div>
 
+                {/* MCP Endpoint URL - Blurred for unpaid users */}
                 {fullEndpointUrl && (
-                  <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3">
-                    <code className="text-sm text-blue-400 font-mono flex-1 truncate">
-                      {fullEndpointUrl}
-                    </code>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(fullEndpointUrl)
-                        setCopiedId(cred.id)
-                        setTimeout(() => setCopiedId(null), 2000)
-                      }}
-                      className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
-                    >
-                      {copiedId === cred.id ? 'Copied!' : 'Copy'}
-                    </button>
+                  <div className="mb-4">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">
+                      MCP Endpoint URL
+                    </label>
+                    <div className="relative">
+                      <div className={`flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3 ${
+                        !hasPaidSubscription ? 'blur-sm select-none pointer-events-none' : ''
+                      }`}>
+                        <code className="text-sm text-blue-400 font-mono flex-1 truncate">
+                          {fullEndpointUrl}
+                        </code>
+                        {hasPaidSubscription && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(fullEndpointUrl)
+                              setCopiedId(cred.id)
+                              setTimeout(() => setCopiedId(null), 2000)
+                            }}
+                            className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
+                          >
+                            {copiedId === cred.id ? 'Copied!' : 'Copy'}
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Unlock overlay for unpaid users */}
+                      {!hasPaidSubscription && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-[#0a0a0a]/95 px-4 py-2 rounded-lg border border-[#1c1c1c]">
+                            <p className="text-xs text-gray-400">🔒 Subscribe to unlock URL</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                )}
+
+                {/* Test Connection Section */}
+                {!hasPaidSubscription && (
+                  <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-medium text-white mb-1">Test Connection</h4>
+                        <p className="text-xs text-gray-500">
+                          {testQueriesRemaining > 0 
+                            ? `${testQueriesRemaining} free ${testQueriesRemaining === 1 ? 'query' : 'queries'} remaining`
+                            : 'Test queries used up'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleTestConnection(cred.id)}
+                        disabled={testingId === cred.id || testQueriesRemaining <= 0}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {testingId === cred.id ? 'Testing...' : 'Test Connection'}
+                      </button>
+                    </div>
+
+                    {/* Test Results */}
+                    {testResult && (
+                      <div className={`mt-3 p-3 rounded-md ${
+                        testResult.success 
+                          ? 'bg-green-500/10 border border-green-500/20' 
+                          : 'bg-red-500/10 border border-red-500/20'
+                      }`}>
+                        <p className={`text-sm font-medium mb-2 ${
+                          testResult.success ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {testResult.success ? '✅ ' : '❌ '}
+                          {testResult.message || testResult.error}
+                        </p>
+                        {testResult.sample_data && (
+                          <div className="text-xs text-gray-300 space-y-1">
+                            <p>• Found {testResult.sample_data.tables_found} tables</p>
+                            {testResult.sample_data.sample_tables?.length > 0 && (
+                              <p>• Sample: {testResult.sample_data.sample_tables.join(', ')}</p>
+                            )}
+                          </div>
+                        )}
+                        {testResult.limit_reached && (
+                          <p className="text-xs text-yellow-400 mt-2">
+                            💡 Subscribe to get unlimited queries
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Subscribe Button */}
+                {!hasPaidSubscription && (
+                  <a
+                    href="/dashboard/settings"
+                    className="block w-full px-4 py-3 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center"
+                  >
+                    Subscribe to Unlock Full Access ($19/mo)
+                  </a>
                 )}
 
                 <p className="text-xs text-gray-500 mt-3">

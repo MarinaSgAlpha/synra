@@ -29,7 +29,7 @@ export async function GET() {
     // Get credentials (without sensitive config data)
     const { data: credentials, error } = await admin
       .from('credentials')
-      .select('id, organization_id, service_slug, name, is_active, created_at, updated_at, last_used_at')
+      .select('id, organization_id, service_slug, name, is_active, created_at, updated_at, last_used_at, test_queries_used')
       .eq('organization_id', membership.organization_id)
       .order('created_at', { ascending: false })
 

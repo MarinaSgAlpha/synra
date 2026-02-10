@@ -81,7 +81,7 @@ export async function GET() {
       return NextResponse.json({ user, organization: org })
     }
 
-    // User exists — fetch organization
+    // User exists — fetch organization and subscription
     const { data: membership } = await admin
       .from('organization_members')
       .select('organization_id, role')
@@ -89,6 +89,8 @@ export async function GET() {
       .single()
 
     let organization = null
+    let subscription = null
+    
     if (membership) {
       const { data: org } = await admin
         .from('organizations')
@@ -96,10 +98,17 @@ export async function GET() {
         .eq('id', membership.organization_id)
         .single()
 
+      const { data: sub } = await admin
+        .from('subscriptions')
+        .select('stripe_customer_id, stripe_subscription_id, status, plan')
+        .eq('organization_id', membership.organization_id)
+        .single()
+
       organization = org
+      subscription = sub
     }
 
-    return NextResponse.json({ user, organization })
+    return NextResponse.json({ user, organization, subscription })
   } catch (error: any) {
     console.error('GET /api/auth/me error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
