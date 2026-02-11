@@ -18,6 +18,9 @@ export const metadata: Metadata = {
     template: "%s | Synra"
   },
   description: "Connect AI assistants to your databases and tools through a secure MCP gateway. No config files, no local servers.",
+  icons: {
+    icon: "/synraico.ico",
+  },
 };
 
 export default function RootLayout({

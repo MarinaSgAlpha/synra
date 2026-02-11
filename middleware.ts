@@ -37,6 +37,6 @@ export const config = {
      * - public folder
      * - api/mcp (MCP endpoints must be publicly accessible)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/mcp).*)',
+    '/((?!_next/static|_next/image|favicon.ico|synraico.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/mcp).*)',
   ],
 }
