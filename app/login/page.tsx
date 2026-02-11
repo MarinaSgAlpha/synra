@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [name, setName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [companySize, setCompanySize] = useState('')
+  const [useCase, setUseCase] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +35,7 @@ export default function LoginPage() {
               name,
               company_name: companyName,
               company_size: companySize,
+              use_case: useCase,
             },
           },
         })
@@ -51,6 +53,7 @@ export default function LoginPage() {
               name,
               companyName,
               companySize,
+              useCase,
             }),
           })
 
@@ -163,6 +166,22 @@ export default function LoginPage() {
                     <option value="201-1000">201–1,000 employees</option>
                     <option value="1000+">1,000+ employees</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    What do you want to connect to AI?
+                  </label>
+                  <input
+                    type="text"
+                    value={useCase}
+                    onChange={(e) => setUseCase(e.target.value)}
+                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g. Supabase, PostgreSQL, MySQL, Stripe, Shopify"
+                  />
+                  <p className="text-[11px] text-gray-600 mt-1">
+                    Separate with commas. Helps us prioritize connectors.
+                  </p>
                 </div>
               </>
             )}

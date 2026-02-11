@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, email, name, companyName, companySize } = await request.json()
+    const { userId, email, name, companyName, companySize, useCase } = await request.json()
 
     if (!userId || !email || !name) {
       return NextResponse.json(
