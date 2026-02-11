@@ -139,15 +139,15 @@ export async function POST(request: NextRequest) {
       // Generate Claude's personalized message
       let claudeMessage = ''
       if (tableCount === 0) {
-        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them, analyze your data, and help you build amazing things!"
+        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Add this endpoint URL under 'mcpServers'."
       } else if (tableCount === 1) {
-        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data, run analytics, and help you understand what's inside. Subscribe to unlock unlimited queries!`
+        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Paste your MCP endpoint URL under 'mcpServers'.`
       } else if (tableCount <= 5) {
         const tableList = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run complex queries, and help you analyze everything. Let's unlock the full power together!`
+        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Add your endpoint URL under 'mcpServers'.`
       } else {
         const sampleTables = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hello! I'm Claude 👋 Your database looks great – I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, analyze patterns, and help you build. Subscribe to let me show you what I can do!`
+        claudeMessage = `Hello! I'm Claude 👋 Your database looks great – I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Paste your MCP endpoint URL under 'mcpServers'.`
       }
 
       return NextResponse.json({
