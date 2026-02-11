@@ -57,25 +57,25 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-4 p-4 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg opacity-50">
-            <div className="w-8 h-8 rounded-full bg-[#1c1c1c] flex items-center justify-center text-gray-500 text-sm font-bold flex-shrink-0">
+          <div className="flex items-start gap-4 p-4 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg">
+            <div className="w-8 h-8 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] flex items-center justify-center text-gray-400 text-sm font-bold flex-shrink-0">
               2
             </div>
             <div>
-              <h3 className="text-gray-300 font-medium mb-1">Get your gateway URL</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-white font-medium mb-1">Get your gateway URL</h3>
+              <p className="text-sm text-gray-400">
                 An MCP endpoint will be generated automatically when you add credentials.
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-4 p-4 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg opacity-50">
-            <div className="w-8 h-8 rounded-full bg-[#1c1c1c] flex items-center justify-center text-gray-500 text-sm font-bold flex-shrink-0">
+          <div className="flex items-start gap-4 p-4 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg">
+            <div className="w-8 h-8 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] flex items-center justify-center text-gray-400 text-sm font-bold flex-shrink-0">
               3
             </div>
             <div>
-              <h3 className="text-gray-300 font-medium mb-1">Connect to Claude</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-white font-medium mb-1">Connect to Claude</h3>
+              <p className="text-sm text-gray-400">
                 Paste your gateway URL into Claude and start querying real data.
               </p>
             </div>

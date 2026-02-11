@@ -10,6 +10,7 @@ interface DashboardContextType {
   organization: Organization | null
   loading: boolean
   logout: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const DashboardContext = createContext<DashboardContextType>({
@@ -17,6 +18,7 @@ const DashboardContext = createContext<DashboardContextType>({
   organization: null,
   loading: true,
   logout: async () => {},
+  refresh: async () => {},
 })
 
 export function useDashboard() {
@@ -71,7 +73,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DashboardContext.Provider value={{ user, organization, loading, logout }}>
+    <DashboardContext.Provider value={{ user, organization, loading, logout, refresh: loadUserData }}>
       {children}
     </DashboardContext.Provider>
   )

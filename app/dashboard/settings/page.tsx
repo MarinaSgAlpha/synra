@@ -13,7 +13,7 @@ const COMPANY_SIZES = [
 ]
 
 export default function SettingsPage() {
-  const { organization, user } = useDashboard()
+  const { organization, user, refresh } = useDashboard()
   const [orgName, setOrgName] = useState('')
   const [companySize, setCompanySize] = useState('')
   const [saving, setSaving] = useState(false)
@@ -48,6 +48,7 @@ export default function SettingsPage() {
       }
 
       setSaved(true)
+      await refresh() // Update sidebar + overview with new data
       setTimeout(() => setSaved(false), 3000)
     } catch (err: any) {
       setError(err.message)
@@ -92,9 +93,9 @@ export default function SettingsPage() {
             type="text"
             value={organization?.slug || ''}
             disabled
-            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-500 text-sm font-mono cursor-not-allowed"
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-400 text-sm font-mono cursor-not-allowed"
           />
-          <p className="text-[11px] text-gray-600 mt-1">
+          <p className="text-[11px] text-gray-500 mt-1">
             Slug cannot be changed
           </p>
         </div>
@@ -125,9 +126,9 @@ export default function SettingsPage() {
             type="email"
             value={user?.email || ''}
             disabled
-            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-500 text-sm cursor-not-allowed"
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-400 text-sm cursor-not-allowed"
           />
-          <p className="text-[11px] text-gray-600 mt-1">
+          <p className="text-[11px] text-gray-500 mt-1">
             Email is tied to your login and cannot be changed here
           </p>
         </div>
@@ -140,8 +141,8 @@ export default function SettingsPage() {
             <span className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-md text-sm text-blue-400 font-medium">
               {(organization?.plan || 'free').charAt(0).toUpperCase() + (organization?.plan || 'free').slice(1)}
             </span>
-            <span className="text-xs text-gray-500">
-              Manage billing and invoices coming soon
+            <span className="text-xs text-gray-400">
+              Billing and invoices coming soon
             </span>
           </div>
         </div>
