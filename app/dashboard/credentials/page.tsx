@@ -321,6 +321,11 @@ export default function ConnectionsPage() {
                   <label className="block text-sm text-gray-300 mb-1">
                     {field.label}
                     {field.required && <span className="text-red-400 ml-1">*</span>}
+                    {field.hint && (
+                      <span className="text-[11px] text-gray-500 font-normal ml-2">
+                        ({field.hint})
+                      </span>
+                    )}
                   </label>
                   <input
                     type={field.type === 'password' ? 'password' : 'text'}
@@ -335,14 +340,9 @@ export default function ConnectionsPage() {
                     data-lpignore="true"
                     className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono mt-1"
                   />
-                  {field.hint && (
-                    <p className="text-[11px] text-gray-400 mt-1.5">
-                      💡 {field.hint}
-                    </p>
-                  )}
                   {field.encrypted && (
                     <p className="text-[11px] text-gray-600 mt-1">
-                      🔒 Encrypted before storage
+                      🔒 This value will be encrypted before storage
                     </p>
                   )}
                 </div>
