@@ -535,12 +535,28 @@ export default function ConnectionsPage() {
                 {/* Subscribe Button */}
                 {!hasPaidSubscription && (
                   <div className="flex justify-center">
-                    <a
-                      href="/dashboard/settings"
-                      className="inline-block px-6 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center whitespace-nowrap"
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/stripe/create-checkout-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ plan: 'starter' }),
+                          })
+                          const data = await res.json()
+                          if (data.url) {
+                            window.location.href = data.url
+                          } else {
+                            setError(data.error || 'Failed to start checkout')
+                          }
+                        } catch (err) {
+                          setError('Failed to start checkout')
+                        }
+                      }}
+                      className="px-6 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center whitespace-nowrap"
                     >
                       Subscribe to Unlock Full Access ($19/mo)
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
