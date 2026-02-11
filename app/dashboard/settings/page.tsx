@@ -3,243 +3,166 @@
 import { useDashboard } from '@/contexts/DashboardContext'
 import { useState, useEffect } from 'react'
 
-const PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 19,
-    features: [
-      '5 credentials',
-      '10,000 requests/day',
-      'Read-only access',
-      'Email support',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 99,
-    popular: true,
-    features: [
-      'Unlimited credentials',
-      '100,000 requests/day',
-      'Read + Write access',
-      'Priority support',
-      'Advanced analytics',
-    ],
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    price: 299,
-    features: [
-      'Everything in Pro',
-      'Unlimited requests',
-      'SSO & SAML',
-      'Dedicated support',
-      'SLA guarantee',
-      'Custom integrations',
-    ],
-  },
+const COMPANY_SIZES = [
+  { value: 'solo', label: 'Solo / Freelancer' },
+  { value: '2-10', label: '2–10 employees' },
+  { value: '11-50', label: '11–50 employees' },
+  { value: '51-200', label: '51–200 employees' },
+  { value: '201-1000', label: '201–1,000 employees' },
+  { value: '1000+', label: '1,000+ employees' },
 ]
 
 export default function SettingsPage() {
-  const { organization } = useDashboard()
-  const [loading, setLoading] = useState<string | null>(null)
-  const [hasStripeCustomer, setHasStripeCustomer] = useState(false)
+  const { organization, user } = useDashboard()
+  const [orgName, setOrgName] = useState('')
+  const [companySize, setCompanySize] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const currentPlan = organization?.plan || 'starter'
-
-  // Check if user has Stripe customer ID
   useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const { subscription } = await res.json()
-          setHasStripeCustomer(!!subscription?.stripe_customer_id)
-        }
-      } catch (err) {
-        console.error('Error checking subscription:', err)
-      }
+    if (organization) {
+      setOrgName(organization.name || '')
+      setCompanySize(organization.company_size || '')
     }
-    checkSubscription()
-  }, [])
+  }, [organization])
 
-  const handleUpgrade = async (planId: string) => {
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
 
-    setLoading(planId)
     try {
-      const res = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
+      const res = await fetch('/api/organization', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({
+          name: orgName,
+          company_size: companySize || null,
+        }),
       })
 
-      if (res.ok) {
-        const { url } = await res.json()
-        window.location.href = url
-      } else {
-        const { error } = await res.json()
-        alert(`Error: ${error}`)
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to update')
       }
-    } catch (err) {
-      console.error('Upgrade error:', err)
-      alert('Failed to start checkout')
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      setError(err.message)
     } finally {
-      setLoading(null)
+      setSaving(false)
     }
   }
 
-  const handleManageBilling = async () => {
-    setLoading('portal')
-    try {
-      const res = await fetch('/api/stripe/create-portal-session', {
-        method: 'POST',
-      })
-
-      if (res.ok) {
-        const { url } = await res.json()
-        window.location.href = url
-      } else {
-        const { error } = await res.json()
-        alert(`Error: ${error}`)
-      }
-    } catch (err) {
-      console.error('Portal error:', err)
-      alert('Failed to open billing portal')
-    } finally {
-      setLoading(null)
-    }
-  }
+  const hasChanges =
+    orgName !== (organization?.name || '') ||
+    companySize !== (organization?.company_size || '')
 
   return (
-    <div className="max-w-7xl">
+    <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Manage your subscription and billing
+          Manage your organization
         </p>
       </div>
 
-      {/* Current Plan */}
-      <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">
-              Current Plan: <span className="text-blue-400">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span>
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              {hasStripeCustomer
-                ? 'Manage your subscription, payment method, and billing history'
-                : 'Add payment method to activate your subscription'}
-            </p>
-          </div>
-          {hasStripeCustomer && (
-            <button
-              onClick={handleManageBilling}
-              disabled={loading === 'portal'}
-              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 font-medium"
-            >
-              {loading === 'portal' ? 'Loading...' : 'Manage Billing'}
-            </button>
-          )}
+      {/* Organization Settings */}
+      <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Organization Name
+          </label>
+          <input
+            type="text"
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="Your organization name"
+          />
         </div>
-      </div>
 
-      {/* Pricing Plans */}
-      <div className="grid md:grid-cols-4 gap-6">
-        {PLANS.map((plan) => {
-          const isCurrent = plan.id === currentPlan
-          const isDowngrade = PLANS.findIndex(p => p.id === currentPlan) > PLANS.findIndex(p => p.id === plan.id)
-
-          return (
-            <div
-              key={plan.id}
-              className={`bg-[#111] border rounded-lg p-6 flex flex-col ${
-                plan.popular
-                  ? 'border-blue-500 relative'
-                  : 'border-[#1c1c1c]'
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-xs rounded-full font-medium">
-                  Popular
-                </div>
-              )}
-
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                <div className="mt-2">
-                  {plan.price === 0 ? (
-                    <span className="text-3xl font-bold text-white">Free</span>
-                  ) : (
-                    <>
-                      <span className="text-3xl font-bold text-white">${plan.price}</span>
-                      <span className="text-gray-400 text-sm">/month</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <ul className="space-y-2 mb-6 flex-1">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                    <span className="text-green-400 mt-0.5">✓</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleUpgrade(plan.id)}
-                disabled={isCurrent || isDowngrade || loading === plan.id}
-                className={`w-full py-2 rounded-lg font-medium transition-colors ${
-                  isCurrent
-                    ? 'bg-[#1c1c1c] text-gray-500 cursor-default'
-                    : isDowngrade
-                    ? 'bg-[#1c1c1c] text-gray-500 cursor-not-allowed'
-                    : 'bg-white text-black hover:bg-gray-200'
-                } disabled:opacity-50`}
-              >
-                {loading === plan.id
-                  ? 'Loading...'
-                  : isCurrent
-                  ? 'Current Plan'
-                  : isDowngrade
-                  ? 'Contact Sales'
-                  : 'Upgrade'}
-              </button>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Organization Settings Section */}
-      <div className="mt-12 bg-[#111] border border-[#1c1c1c] rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Organization Settings</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Organization Name</label>
-            <input
-              type="text"
-              value={organization?.name || ''}
-              disabled
-              className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg text-white font-mono text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Slug</label>
-            <input
-              type="text"
-              value={organization?.slug || ''}
-              disabled
-              className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg text-white font-mono text-sm"
-            />
-          </div>
-          <p className="text-xs text-gray-500">
-            Contact support to update organization settings
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Organization Slug
+          </label>
+          <input
+            type="text"
+            value={organization?.slug || ''}
+            disabled
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-500 text-sm font-mono cursor-not-allowed"
+          />
+          <p className="text-[11px] text-gray-600 mt-1">
+            Slug cannot be changed
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Company Size
+          </label>
+          <select
+            value={companySize}
+            onChange={(e) => setCompanySize(e.target.value)}
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none appearance-none"
+          >
+            <option value="">Not specified</option>
+            {COMPANY_SIZES.map((size) => (
+              <option key={size.value} value={size.value}>
+                {size.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Account Email
+          </label>
+          <input
+            type="email"
+            value={user?.email || ''}
+            disabled
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-gray-500 text-sm cursor-not-allowed"
+          />
+          <p className="text-[11px] text-gray-600 mt-1">
+            Email is tied to your login and cannot be changed here
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Current Plan
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-md text-sm text-blue-400 font-medium">
+              {(organization?.plan || 'free').charAt(0).toUpperCase() + (organization?.plan || 'free').slice(1)}
+            </span>
+            <span className="text-xs text-gray-500">
+              Manage billing and invoices coming soon
+            </span>
+          </div>
+        </div>
+
+        {/* Save button */}
+        <div className="pt-2 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className="px-5 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-700 disabled:to-gray-800 disabled:text-gray-500 text-white text-sm font-medium rounded-md transition-all"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+
+          {saved && (
+            <span className="text-sm text-green-400">Saved!</span>
+          )}
+
+          {error && (
+            <span className="text-sm text-red-400">{error}</span>
+          )}
         </div>
       </div>
     </div>
