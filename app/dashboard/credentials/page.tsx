@@ -243,16 +243,32 @@ export default function CredentialsPage() {
             <div>
               <p className="text-sm text-gray-400 mb-4">Select a service to connect:</p>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {services.map((service) => (
-                  <button
-                    key={service.slug}
-                    onClick={() => handleSelectService(service)}
-                    className="text-left p-4 bg-[#0a0a0a] border border-[#1c1c1c] hover:border-blue-500/30 rounded-lg transition-all"
-                  >
-                    <h3 className="text-white font-medium mb-1">{service.name}</h3>
-                    <p className="text-xs text-gray-500">{service.description || 'Connect your account'}</p>
-                  </button>
-                ))}
+                {services.map((service) => {
+                  const icons: Record<string, { emoji: string; color: string }> = {
+                    supabase: { emoji: '⚡', color: 'border-green-500/30 hover:border-green-500/60' },
+                    mixpanel: { emoji: '📊', color: 'border-purple-500/30 hover:border-purple-500/60' },
+                    stripe: { emoji: '💳', color: 'border-blue-500/30 hover:border-blue-500/60' },
+                  }
+                  const icon = icons[service.slug] || { emoji: '🔗', color: 'border-[#1c1c1c] hover:border-blue-500/30' }
+
+                  return (
+                    <button
+                      key={service.slug}
+                      onClick={() => handleSelectService(service)}
+                      className={`text-left p-4 bg-[#0a0a0a] border rounded-lg transition-all group ${icon.color}`}
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-2xl">{icon.emoji}</span>
+                        <h3 className="text-white font-semibold group-hover:text-blue-400 transition-colors">
+                          {service.name}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        {service.description || 'Connect your account'}
+                      </p>
+                    </button>
+                  )
+                })}
                 {services.length === 0 && (
                   <p className="text-sm text-gray-500 col-span-full">
                     No services available. Check your supported_services table in Supabase.

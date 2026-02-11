@@ -10,7 +10,59 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { decrypt } from '@/lib/encryption'
 import { SUPABASE_TOOLS, handleSupabaseTool } from '@/lib/mcp-handlers/supabase'
+import { MIXPANEL_TOOLS, handleMixpanelTool } from '@/lib/mcp-handlers/mixpanel'
+import { STRIPE_TOOLS, handleStripeTool } from '@/lib/mcp-handlers/stripe'
 import { NextRequest, NextResponse } from 'next/server'
+
+// ─── Service Registry ───────────────────────────────────────────────
+
+type ToolDef = { name: string; description: string; inputSchema: any }
+type ToolResult = { success: boolean; data?: any; error?: string }
+
+interface ServiceHandler {
+  tools: ToolDef[]
+  handle: (
+    toolName: string,
+    args: Record<string, any>,
+    config: Record<string, string>
+  ) => Promise<ToolResult>
+}
+
+const SERVICE_HANDLERS: Record<string, ServiceHandler> = {
+  supabase: {
+    tools: SUPABASE_TOOLS,
+    handle: async (toolName, args, config) => {
+      const url = config.url || config.supabase_url || config.project_url
+      const key = config.service_role_key || config.api_key || config.anon_key || config.key
+      if (!url || !key) {
+        return { success: false, error: `Incomplete credentials. Need a URL and API key.` }
+      }
+      return handleSupabaseTool(toolName, args, url, key)
+    },
+  },
+  mixpanel: {
+    tools: MIXPANEL_TOOLS,
+    handle: async (toolName, args, config) => {
+      const projectId = config.project_id
+      const username = config.service_account_username
+      const secret = config.service_account_secret
+      if (!projectId || !username || !secret) {
+        return { success: false, error: 'Incomplete credentials. Need project_id, service_account_username, and service_account_secret.' }
+      }
+      return handleMixpanelTool(toolName, args, { project_id: projectId, service_account_username: username, service_account_secret: secret })
+    },
+  },
+  stripe: {
+    tools: STRIPE_TOOLS,
+    handle: async (toolName, args, config) => {
+      const secretKey = config.secret_key || config.api_key
+      if (!secretKey) {
+        return { success: false, error: 'Incomplete credentials. Need a Stripe secret key.' }
+      }
+      return handleStripeTool(toolName, args, secretKey)
+    },
+  },
+}
 
 // ─── JSON-RPC Helpers ───────────────────────────────────────────────
 
@@ -194,7 +246,13 @@ export async function POST(
 
     // ── List tools ──────────────────────────────────────────────────
     case 'tools/list': {
-      let tools = SUPABASE_TOOLS
+      // Get the handler for this service
+      const serviceHandler = SERVICE_HANDLERS[endpoint.service_slug]
+      if (!serviceHandler) {
+        return jsonRpcError(id, -32000, `Unsupported service: ${endpoint.service_slug}`)
+      }
+
+      let tools = serviceHandler.tools
 
       // Filter by allowed_tools if set on the endpoint
       if (
@@ -219,8 +277,14 @@ export async function POST(
         return jsonRpcError(id, -32602, 'Invalid params: tool name is required')
       }
 
-      // Verify tool exists
-      const toolExists = SUPABASE_TOOLS.some((t) => t.name === toolName)
+      // Get the handler for this service
+      const handler = SERVICE_HANDLERS[endpoint.service_slug]
+      if (!handler) {
+        return jsonRpcError(id, -32000, `Unsupported service: ${endpoint.service_slug}`)
+      }
+
+      // Verify tool exists for this service
+      const toolExists = handler.tools.some((t) => t.name === toolName)
       if (!toolExists) {
         return jsonRpcError(id, -32601, `Tool not found: ${toolName}`)
       }
@@ -251,30 +315,8 @@ export async function POST(
         )
       }
 
-      // Support various config key names for flexibility
-      const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url
-      const apiKey =
-        decryptedConfig.service_role_key ||
-        decryptedConfig.api_key ||
-        decryptedConfig.anon_key ||
-        decryptedConfig.key
-
-      if (!supabaseUrl || !apiKey) {
-        const availableKeys = Object.keys(decryptedConfig).join(', ')
-        return jsonRpcError(
-          id,
-          -32000,
-          `Incomplete credentials. Found keys: [${availableKeys}]. Need a URL and API key.`
-        )
-      }
-
-      // Execute the tool
-      const result = await handleSupabaseTool(
-        toolName,
-        toolArgs,
-        supabaseUrl,
-        apiKey
-      )
+      // Execute the tool via the service handler
+      const result = await handler.handle(toolName, toolArgs, decryptedConfig)
 
       const durationMs = Date.now() - startTime
 
