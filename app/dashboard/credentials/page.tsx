@@ -161,9 +161,33 @@ export default function ConnectionsPage() {
     }
     if (service.slug === 'supabase') {
       return [
-        { key: 'url', label: 'Supabase URL', type: 'url' as const, required: true, encrypted: false },
-        { key: 'anon_key', label: 'Anon Key', type: 'password' as const, required: true, encrypted: true },
-        { key: 'service_role_key', label: 'Service Role Key', type: 'password' as const, required: false, encrypted: true },
+        {
+          key: 'url',
+          label: 'Supabase Project URL',
+          type: 'url' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'https://yourproject.supabase.co',
+          hint: 'Find this in your Supabase dashboard → Settings → API → Project URL',
+        },
+        {
+          key: 'anon_key',
+          label: 'Anon Key',
+          type: 'password' as const,
+          required: true,
+          encrypted: true,
+          placeholder: '',
+          hint: 'Settings → API → Project API keys → anon public',
+        },
+        {
+          key: 'service_role_key',
+          label: 'Service Role Key',
+          type: 'password' as const,
+          required: false,
+          encrypted: true,
+          placeholder: '',
+          hint: 'Settings → API → Project API keys → service_role (optional, for full access)',
+        },
       ]
     }
     return []
@@ -293,9 +317,14 @@ export default function ConnectionsPage() {
 
               {getConfigFields(selectedService).map((field) => (
                 <div key={field.key}>
-                  <label className="block text-sm text-gray-300 mb-2">
+                  <label className="block text-sm text-gray-300 mb-1">
                     {field.label}
                     {field.required && <span className="text-red-400 ml-1">*</span>}
+                    {field.hint && (
+                      <span className="text-[11px] text-gray-500 font-normal ml-2">
+                        ({field.hint})
+                      </span>
+                    )}
                   </label>
                   <input
                     type={field.type === 'password' ? 'password' : 'text'}
@@ -304,11 +333,11 @@ export default function ConnectionsPage() {
                       setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
                     required={field.required}
-                    placeholder={field.type === 'url' ? 'https://...' : '••••••••'}
+                    placeholder={field.placeholder || ''}
                     autoComplete="new-password"
                     data-1p-ignore
                     data-lpignore="true"
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono"
+                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono mt-1"
                   />
                   {field.encrypted && (
                     <p className="text-[11px] text-gray-600 mt-1">
