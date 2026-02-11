@@ -167,8 +167,8 @@ export default function ConnectionsPage() {
           type: 'url' as const,
           required: true,
           encrypted: false,
-          placeholder: 'https://yourproject.supabase.co',
-          hint: 'Find this in your Supabase dashboard → Settings → API → Project URL',
+          placeholder: 'https://your-project-id.supabase.co',
+          hint: 'Supabase → Settings → General → copy Project ID → https://<project-id>.supabase.co',
         },
         {
           key: 'anon_key',
