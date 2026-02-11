@@ -60,6 +60,8 @@ export interface SupportedService {
       type: 'text' | 'password' | 'url';
       required: boolean;
       encrypted: boolean;
+      placeholder?: string;
+      hint?: string;
     }>;
   };
   available_tools: string[];
