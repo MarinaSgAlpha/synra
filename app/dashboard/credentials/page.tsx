@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useDashboard } from '@/contexts/DashboardContext'
-import type { SupportedService, Credential } from '@/types'
+import type { SupportedService } from '@/types'
 
-interface CredentialWithEndpoint {
+interface ConnectionItem {
   id: string
   name: string
   service_slug: string
@@ -12,11 +12,14 @@ interface CredentialWithEndpoint {
   created_at: string
   endpoint_url?: string
   test_queries_used?: number
+  rate_limit?: number
+  last_accessed_at?: string | null
+  endpoint_created_at?: string | null
 }
 
-export default function CredentialsPage() {
+export default function ConnectionsPage() {
   const { user, organization } = useDashboard()
-  const [credentials, setCredentials] = useState<CredentialWithEndpoint[]>([])
+  const [connections, setConnections] = useState<ConnectionItem[]>([])
   const [services, setServices] = useState<SupportedService[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -47,7 +50,7 @@ export default function CredentialsPage() {
 
       if (credRes.ok) {
         const { credentials: creds } = await credRes.json()
-        setCredentials(creds || [])
+        setConnections(creds || [])
       }
 
       if (svcRes.ok) {
@@ -55,10 +58,8 @@ export default function CredentialsPage() {
         setServices(svcs || [])
       }
 
-      // Check if user has paid subscription
       if (subRes.ok) {
         const { subscription } = await subRes.json()
-        // User has paid if they have a Stripe subscription ID and it's active
         const hasPaid = subscription?.stripe_subscription_id && subscription?.status === 'active'
         setHasPaidSubscription(hasPaid || false)
       }
@@ -84,7 +85,6 @@ export default function CredentialsPage() {
       setTestResults((prev) => ({ ...prev, [credentialId]: data }))
 
       if (data.success) {
-        // Reload credentials to get updated test_queries_used count
         await loadData()
       }
     } catch (err) {
@@ -126,27 +126,24 @@ export default function CredentialsPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        
-        // Handle upgrade requirement
         if (data.upgrade_required) {
-          setError(`${data.error} - Upgrade your plan to add more credentials.`)
+          setError(`${data.error} - Upgrade your plan to add more connections.`)
         } else {
-          setError(data.error || 'Failed to create credential')
+          setError(data.error || 'Failed to create connection')
         }
-        
         setSaving(false)
         return
       }
 
       const { credential, endpoint } = await res.json()
 
-      setCredentials((prev) => [
+      setConnections((prev) => [
         { ...credential, endpoint_url: endpoint.endpoint_url },
         ...prev,
       ])
 
       const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
-      setSuccess(`Credential created! Your MCP endpoint: ${fullUrl}`)
+      setSuccess(`Connection created! Your MCP endpoint: ${fullUrl}`)
       setShowForm(false)
       setCredName('')
       setConfigValues({})
@@ -158,12 +155,10 @@ export default function CredentialsPage() {
     }
   }
 
-  // Get config fields from the service's config_schema
   const getConfigFields = (service: SupportedService) => {
     if (service.config_schema && Array.isArray(service.config_schema.fields)) {
       return service.config_schema.fields
     }
-    // Fallback for Supabase if config_schema not populated
     if (service.slug === 'supabase') {
       return [
         { key: 'url', label: 'Supabase URL', type: 'url' as const, required: true, encrypted: false },
@@ -178,7 +173,7 @@ export default function CredentialsPage() {
     return (
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Credentials</h1>
+          <h1 className="text-2xl font-bold text-white">Connections</h1>
         </div>
         <div className="text-gray-400 text-sm">Loading...</div>
       </div>
@@ -189,9 +184,9 @@ export default function CredentialsPage() {
     <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Credentials</h1>
+          <h1 className="text-2xl font-bold text-white">Connections</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Manage your service connections
+            Manage your service connections and MCP endpoints
           </p>
         </div>
         {!showForm && (
@@ -203,7 +198,7 @@ export default function CredentialsPage() {
             }}
             className="px-4 py-2 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all"
           >
-            Add Credential
+            Add Connection
           </button>
         )}
       </div>
@@ -222,11 +217,11 @@ export default function CredentialsPage() {
         </div>
       )}
 
-      {/* Add credential form */}
+      {/* Add connection form */}
       {showForm && (
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white">Add New Credential</h2>
+            <h2 className="text-lg font-semibold text-white">Add New Connection</h2>
             <button
               onClick={() => {
                 setShowForm(false)
@@ -329,7 +324,7 @@ export default function CredentialsPage() {
                   disabled={saving}
                   className="px-5 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium rounded-md transition-all"
                 >
-                  {saving ? 'Saving...' : 'Save Credential'}
+                  {saving ? 'Saving...' : 'Save Connection'}
                 </button>
                 <button
                   type="button"
@@ -347,37 +342,43 @@ export default function CredentialsPage() {
         </div>
       )}
 
-      {/* Credentials list */}
-      {credentials.length > 0 ? (
+      {/* Connections list */}
+      {connections.length > 0 ? (
         <div className="space-y-3">
-          {credentials.map((cred) => {
-            const fullEndpointUrl = cred.endpoint_url
-              ? `${typeof window !== 'undefined' ? window.location.origin : ''}${cred.endpoint_url}`
+          {connections.map((conn) => {
+            const fullEndpointUrl = conn.endpoint_url
+              ? `${typeof window !== 'undefined' ? window.location.origin : ''}${conn.endpoint_url}`
               : null
-            const testQueriesUsed = cred.test_queries_used || 0
+            const testQueriesUsed = conn.test_queries_used || 0
             const testQueriesRemaining = 10 - testQueriesUsed
-            const testResult = testResults[cred.id]
+            const testResult = testResults[conn.id]
+            const lastUsed = conn.last_accessed_at
+              ? new Date(conn.last_accessed_at).toLocaleString()
+              : 'Never'
 
             return (
               <div
-                key={cred.id}
+                key={conn.id}
                 className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5"
               >
+                {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-white font-medium">{cred.name}</h3>
+                    <h3 className="text-white font-medium">{conn.name}</h3>
                     <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
-                      cred.is_active
+                      conn.is_active
                         ? 'text-green-400 bg-green-500/10 border-green-500/20'
                         : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
                     }`}>
-                      {cred.is_active ? 'Active' : 'Inactive'}
+                      {conn.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full">
+                      {conn.service_slug}
                     </span>
                   </div>
-                  <span className="text-xs text-gray-600">{cred.service_slug}</span>
                 </div>
 
-                {/* MCP Endpoint URL - Partially visible for unpaid users */}
+                {/* MCP Endpoint URL */}
                 {fullEndpointUrl && (
                   <div className="mb-4">
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">
@@ -387,7 +388,6 @@ export default function CredentialsPage() {
                       <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3">
                         <code className="text-sm text-blue-400 font-mono flex-1 truncate">
                           {hasPaidSubscription ? fullEndpointUrl : (() => {
-                            // Show first part and last part, blur the middle
                             const url = new URL(fullEndpointUrl)
                             const pathParts = url.pathname.split('/')
                             const lastPart = pathParts[pathParts.length - 1]
@@ -398,12 +398,12 @@ export default function CredentialsPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(fullEndpointUrl)
-                              setCopiedId(cred.id)
+                              setCopiedId(conn.id)
                               setTimeout(() => setCopiedId(null), 2000)
                             }}
                             className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
                           >
-                            {copiedId === cred.id ? 'Copied!' : 'Copy'}
+                            {copiedId === conn.id ? 'Copied!' : 'Copy'}
                           </button>
                         ) : (
                           <span className="px-3 py-1 text-xs text-gray-500 flex-shrink-0">
@@ -414,6 +414,22 @@ export default function CredentialsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Endpoint Stats */}
+                <div className="grid grid-cols-3 gap-4 text-sm mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Rate Limit</p>
+                    <p className="text-white">{conn.rate_limit || 100} req/min</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Last Used</p>
+                    <p className="text-white">{lastUsed}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Created</p>
+                    <p className="text-white">{new Date(conn.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
 
                 {/* Test Connection Section */}
                 {!hasPaidSubscription && (
@@ -428,11 +444,11 @@ export default function CredentialsPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleTestConnection(cred.id)}
-                        disabled={testingId === cred.id || testQueriesRemaining <= 0}
+                        onClick={() => handleTestConnection(conn.id)}
+                        disabled={testingId === conn.id || testQueriesRemaining <= 0}
                         className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {testingId === cred.id ? 'Testing...' : 'Test Connection'}
+                        {testingId === conn.id ? 'Testing...' : 'Test Connection'}
                       </button>
                     </div>
 
@@ -451,7 +467,6 @@ export default function CredentialsPage() {
                         </p>
                         {testResult.success && testResult.sample_data && (
                           <div className="text-xs text-gray-300 space-y-2">
-                            {/* Show table count */}
                             {testResult.sample_data.table_count !== undefined && (
                               <div className="flex items-center gap-2">
                                 <span className="text-xl">📊</span>
@@ -472,7 +487,6 @@ export default function CredentialsPage() {
                               </div>
                             )}
                             
-                            {/* Claude's message */}
                             {testResult.sample_data.claude_says && (
                               <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mt-2">
                                 <p className="text-sm text-gray-200 leading-relaxed">
@@ -508,10 +522,6 @@ export default function CredentialsPage() {
                     </a>
                   </div>
                 )}
-
-                <p className="text-xs text-gray-500 mt-3">
-                  Created {new Date(cred.created_at).toLocaleDateString()}
-                </p>
               </div>
             )
           })}
@@ -519,16 +529,16 @@ export default function CredentialsPage() {
       ) : (
         !showForm && (
           <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-12 text-center">
-            <div className="text-4xl mb-4">🔑</div>
-            <h2 className="text-xl font-semibold text-white mb-2">No credentials yet</h2>
+            <div className="text-4xl mb-4">🔗</div>
+            <h2 className="text-xl font-semibold text-white mb-2">No connections yet</h2>
             <p className="text-sm text-gray-400 mb-6">
-              Add your first credential to connect a service to your MCP gateway.
+              Add your first connection to start using AI with your data.
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="px-5 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-md transition-all"
             >
-              Add Credential
+              Add Connection
             </button>
           </div>
         )

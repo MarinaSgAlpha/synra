@@ -42,7 +42,7 @@ export default function DashboardPage() {
                 Connect a Supabase database to start building AI-powered queries.
               </p>
               <Link
-                href="/dashboard/connections"
+                href="/dashboard/credentials"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-md transition-all"
               >
                 Add Connection

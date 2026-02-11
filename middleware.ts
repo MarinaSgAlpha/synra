@@ -4,9 +4,9 @@ import { updateSession } from '@/lib/supabase/middleware'
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request)
 
-  // Redirect old routes to new merged Connections page
-  if (request.nextUrl.pathname === '/dashboard/credentials' || request.nextUrl.pathname === '/dashboard/endpoints') {
-    return NextResponse.redirect(new URL('/dashboard/connections', request.url))
+  // Redirect old endpoints route to connections page
+  if (request.nextUrl.pathname === '/dashboard/endpoints') {
+    return NextResponse.redirect(new URL('/dashboard/credentials', request.url))
   }
 
   // Protected dashboard routes
