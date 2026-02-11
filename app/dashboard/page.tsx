@@ -1,10 +1,19 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useDashboard } from '@/contexts/DashboardContext'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   const { user, organization } = useDashboard()
+  const [connectionCount, setConnectionCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/credentials')
+      .then((res) => res.json())
+      .then((data) => setConnectionCount(data.credentials?.length ?? 0))
+      .catch(() => setConnectionCount(0))
+  }, [])
 
   return (
     <div className="max-w-5xl">
@@ -24,7 +33,7 @@ export default function DashboardPage() {
         </div>
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Connections</p>
-          <p className="text-lg font-semibold text-white">0</p>
+          <p className="text-lg font-semibold text-white">{connectionCount ?? '—'}</p>
         </div>
       </div>
 
