@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const MAX_TEST_QUERIES = 10
 
-// POST — Execute a test query to show value (max 3 free queries)
+// POST — Execute a test query to show value (max 10 free queries)
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient()
@@ -139,15 +139,15 @@ export async function POST(request: NextRequest) {
       // Generate Claude's personalized message
       let claudeMessage = ''
       if (tableCount === 0) {
-        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Add this endpoint URL under 'mcpServers'."
+        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL."
       } else if (tableCount === 1) {
-        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Paste your MCP endpoint URL under 'mcpServers'.`
+        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
       } else if (tableCount <= 5) {
         const tableList = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Add your endpoint URL under 'mcpServers'.`
+        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
       } else {
         const sampleTables = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hello! I'm Claude 👋 Your database looks great – I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect: Open Claude Desktop → Settings → Developer → Edit Config → Paste your MCP endpoint URL under 'mcpServers'.`
+        claudeMessage = `Hello! I'm Claude 👋 Your database looks great - I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
       }
 
       return NextResponse.json({
