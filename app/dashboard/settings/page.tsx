@@ -15,6 +15,7 @@ const COMPANY_SIZES = [
 export default function SettingsPage() {
   const { organization, user, refresh } = useDashboard()
   const [orgName, setOrgName] = useState('')
+  const [userName, setUserName] = useState('')
   const [companySize, setCompanySize] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -25,7 +26,10 @@ export default function SettingsPage() {
       setOrgName(organization.name || '')
       setCompanySize(organization.company_size || '')
     }
-  }, [organization])
+    if (user) {
+      setUserName(user.name || '')
+    }
+  }, [organization, user])
 
   const handleSave = async () => {
     setSaving(true)
@@ -39,6 +43,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: orgName,
           company_size: companySize || null,
+          user_name: userName,
         }),
       })
 
@@ -59,6 +64,7 @@ export default function SettingsPage() {
 
   const hasChanges =
     orgName !== (organization?.name || '') ||
+    userName !== (user?.name || '') ||
     companySize !== (organization?.company_size || '')
 
   return (
@@ -72,6 +78,19 @@ export default function SettingsPage() {
 
       {/* Organization Settings */}
       <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Your Name
+          </label>
+          <input
+            type="text"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="Your name"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Organization Name

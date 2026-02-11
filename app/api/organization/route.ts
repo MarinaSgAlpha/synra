@@ -13,7 +13,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, company_size } = await request.json()
+    const { name, company_size, user_name } = await request.json()
 
     // Get user's organization
     const { data: membership } = await admin
@@ -45,6 +45,14 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Update user name if provided
+    if (user_name !== undefined) {
+      await admin
+        .from('users')
+        .update({ name: user_name, updated_at: new Date().toISOString() })
+        .eq('id', authUser.id)
+    }
 
     return NextResponse.json({ organization: org })
   } catch (error: any) {
