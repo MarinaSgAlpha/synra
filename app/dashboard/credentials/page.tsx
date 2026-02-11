@@ -169,22 +169,13 @@ export default function ConnectionsPage() {
           hint: 'Supabase → Settings → General → copy Project ID, then use https://<project-id>.supabase.co',
         },
         {
-          key: 'anon_key',
-          label: 'Anon Key',
+          key: 'service_role_key',
+          label: 'Service Role Key',
           type: 'password' as const,
           required: true,
           encrypted: true,
           placeholder: '',
-          hint: 'Supabase → Settings → API Keys → Publishable key → copy',
-        },
-        {
-          key: 'service_role_key',
-          label: 'Service Role Key',
-          type: 'password' as const,
-          required: false,
-          encrypted: true,
-          placeholder: '',
-          hint: 'Supabase → Settings → API Keys → Secret key → reveal and copy (optional, enables full access)',
+          hint: 'Supabase → Settings → API Keys → Secret key → reveal and copy',
         },
       ]
     }
