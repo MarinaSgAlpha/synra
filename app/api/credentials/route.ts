@@ -42,16 +42,22 @@ export async function GET() {
     if (credentialIds.length > 0) {
       const { data: endpointData } = await admin
         .from('mcp_endpoints')
-        .select('credential_id, endpoint_url')
+        .select('credential_id, endpoint_url, rate_limit, last_accessed_at, created_at')
         .in('credential_id', credentialIds)
 
       endpoints = endpointData || []
     }
 
-    // Merge endpoint URLs into credentials
+    // Merge endpoint data into credentials
     const credentialsWithEndpoints = (credentials || []).map((cred: any) => {
       const endpoint = endpoints.find((e: any) => e.credential_id === cred.id)
-      return { ...cred, endpoint_url: endpoint?.endpoint_url || null }
+      return {
+        ...cred,
+        endpoint_url: endpoint?.endpoint_url || null,
+        rate_limit: endpoint?.rate_limit || null,
+        last_accessed_at: endpoint?.last_accessed_at || null,
+        endpoint_created_at: endpoint?.created_at || null,
+      }
     })
 
     return NextResponse.json({ credentials: credentialsWithEndpoints })

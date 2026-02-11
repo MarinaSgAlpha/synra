@@ -23,11 +23,7 @@ export default function DashboardPage() {
           <p className="text-lg font-semibold text-white capitalize">{organization?.plan || 'Free'}</p>
         </div>
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Credentials</p>
-          <p className="text-lg font-semibold text-white">0</p>
-        </div>
-        <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Endpoints</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Connections</p>
           <p className="text-lg font-semibold text-white">0</p>
         </div>
       </div>
@@ -41,15 +37,15 @@ export default function DashboardPage() {
               1
             </div>
             <div className="flex-1">
-              <h3 className="text-white font-medium mb-1">Add your first credential</h3>
+              <h3 className="text-white font-medium mb-1">Add your first connection</h3>
               <p className="text-sm text-gray-500 mb-3">
                 Connect a Supabase database to start building AI-powered queries.
               </p>
               <Link
-                href="/dashboard/credentials"
+                href="/dashboard/connections"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-md transition-all"
               >
-                Add Credential
+                Add Connection
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
