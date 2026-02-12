@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synra — Connect Claude to Your Supabase in 60 Seconds</title>
+    <meta name="description" content="Managed MCP gateway for Supabase. One secure URL, no config files, no .env headaches. Get your endpoint in under a minute.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0b;
+            --bg-raised: #111113;
+            --bg-card: #161619;
+            --border: #222228;
+            --border-subtle: #1a1a1f;
+            --text: #e8e8ec;
+            --text-muted: #8b8b96;
+            --text-dim: #5a5a66;
+            --accent: #3b82f6;
+            --accent-dim: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.12);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --font-body: 'Outfit', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* ---- NAV ---- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 16px 0;
+            background: rgba(10, 10, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            font-size: 14px;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--accent);
+            color: #000;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #4d8ef7;
+            box-shadow: 0 0 24px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: transparent;
+            color: var(--text);
+            font-family: var(--font-body);
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-muted);
+            background: var(--bg-raised);
+        }
+
+        /* ---- HERO ---- */
+        .hero {
+            padding: 160px 24px 100px;
+            max-width: 1100px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 32px;
+            font-family: var(--font-mono);
+        }
+
+        .hero-badge .pulse {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+        }
+
+        .hero h1 {
+            font-size: clamp(40px, 6vw, 64px);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent), #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-sub {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 520px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .hero-proof {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .hero-proof span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hero-proof .check {
+            color: var(--accent);
+        }
+
+        /* ---- TERMINAL DEMO ---- */
+        .terminal-section {
+            max-width: 720px;
+            margin: 0 auto 120px;
+            padding: 0 24px;
+        }
+
+        .terminal {
+            background: var(--bg-raised);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 18px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .terminal-body {
+            padding: 24px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 2;
+        }
+
+        .terminal-line {
+            opacity: 0;
+            animation: termIn 0.3s forwards;
+        }
+
+        .terminal-line:nth-child(1) { animation-delay: 0.3s; }
+        .terminal-line:nth-child(2) { animation-delay: 0.8s; }
+        .terminal-line:nth-child(3) { animation-delay: 1.3s; }
+        .terminal-line:nth-child(4) { animation-delay: 1.8s; }
+        .terminal-line:nth-child(5) { animation-delay: 2.5s; }
+        .terminal-line:nth-child(6) { animation-delay: 3.0s; }
+        .terminal-line:nth-child(7) { animation-delay: 3.5s; }
+
+        @keyframes termIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .t-prompt { color: var(--accent); }
+        .t-comment { color: var(--text-dim); }
+        .t-string { color: #f59e0b; }
+        .t-key { color: #60a5fa; }
+        .t-success { color: var(--accent); }
+        .t-url { color: #c084fc; }
+        .t-arrow { color: var(--text-dim); }
+
+        /* ---- PROBLEM SECTION ---- */
+        .section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px 120px;
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 48px;
+            line-height: 1.2;
+        }
+
+        .section-title .muted {
+            color: var(--text-muted);
+        }
+
+        /* Pain points */
+        .pain-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .pain-card {
+            background: var(--bg-raised);
+            padding: 32px;
+        }
+
+        .pain-icon {
+            font-size: 20px;
+            margin-bottom: 16px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+        }
+
+        .pain-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .pain-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* ---- HOW IT WORKS ---- */
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 64px 1fr;
+            gap: 24px;
+            padding: 40px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        .step-num {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-glow);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--accent);
+        }
+
+        .step h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .step p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .step code {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        /* ---- COMPARISON TABLE ---- */
+        .comparison {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison th, .comparison td {
+            padding: 16px 24px;
+            text-align: left;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison thead th {
+            background: var(--bg-card);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .comparison thead th:last-child {
+            color: var(--accent);
+        }
+
+        .comparison tbody td {
+            color: var(--text-muted);
+        }
+
+        .comparison tbody td:first-child {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .comparison tbody td:last-child {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .comparison tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison tbody td .x {
+            color: var(--danger);
+        }
+
+        /* ---- WHAT YOU CAN ASK ---- */
+        .query-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .query-card {
+            background: var(--bg-raised);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            transition: border-color 0.2s;
+        }
+
+        .query-card:hover {
+            border-color: var(--accent);
+        }
+
+        .query-card .query {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--accent);
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .query-card .desc {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* ---- PRICING ---- */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .price-card {
+            background: var(--bg-raised);
+            padding: 36px 32px;
+        }
+
+        .price-card.featured {
+            background: var(--bg-card);
+            position: relative;
+        }
+
+        .price-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: var(--accent);
+            background: var(--accent-glow);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .price-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .price-amount {
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 4px;
+        }
+
+        .price-amount span {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .price-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        .price-features {
+            list-style: none;
+            margin-bottom: 28px;
+        }
+
+        .price-features li {
+            font-size: 13px;
+            color: var(--text-muted);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .price-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .price-features li.coming::before {
+            content: '◦';
+            color: var(--text-dim);
+        }
+
+        .price-features li.coming {
+            color: var(--text-dim);
+        }
+
+        /* ---- SECURITY ---- */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .sec-card {
+            background: var(--bg-raised);
+            padding: 28px 24px;
+        }
+
+        .sec-card h3 {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .sec-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ---- FAQ ---- */
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 24px 0;
+        }
+
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+
+        .faq-q {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .faq-q::before {
+            content: '+';
+            font-family: var(--font-mono);
+            color: var(--text-dim);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .faq-a {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.7;
+            padding-left: 30px;
+        }
+
+        /* ---- CTA ---- */
+        .cta-section {
+            text-align: center;
+            padding: 80px 24px 120px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-section h2 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+
+        .cta-section p {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        /* ---- FOOTER ---- */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 32px 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        footer a {
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--text);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        /* ---- RESPONSIVE ---- */
+        @media (max-width: 768px) {
+            .pain-grid { grid-template-columns: 1fr; }
+            .query-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .security-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-links a:not(.btn-primary) { display: none; }
+            .hero-actions { flex-direction: column; }
+            .hero-proof { flex-direction: column; gap: 8px; }
+            .step { grid-template-columns: 48px 1fr; gap: 16px; }
+            footer { flex-direction: column; gap: 16px; text-align: center; }
+        }
+
+        @media (max-width: 480px) {
+            .security-grid { grid-template-columns: 1fr; }
+            .comparison th, .comparison td { padding: 12px 14px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="logo">
+                <span class="logo-dot"></span>
+                synra
+            </a>
+            <div class="nav-links">
+                <a href="#how-it-works">How it works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="/blog">Blog</a>
+                <a href="/dashboard" class="btn-primary">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-badge">
+            <span class="pulse"></span>
+            Supabase connector live
+        </div>
+        <h1>Connect Claude to Your<br>Supabase in <span class="highlight">60 Seconds</span></h1>
+        <p class="hero-sub">Managed MCP gateway. One secure URL, no config files, no .env headaches. Paste it into Claude Desktop and start querying.</p>
+        <div class="hero-actions">
+            <a href="/dashboard" class="btn-primary">Get Started Free →</a>
+            <a href="#how-it-works" class="btn-secondary">See how it works</a>
+        </div>
+        <div class="hero-proof">
+            <span><span class="check">✓</span> Starting at $19/mo</span>
+            <span><span class="check">✓</span> 5 credentials included</span>
+            <span><span class="check">✓</span> Read-only by default</span>
+        </div>
+    </section>
+
+    <!-- TERMINAL DEMO -->
+    <div class="terminal-section">
+        <div class="terminal">
+            <div class="terminal-header">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+                <span class="terminal-title">Claude Desktop</span>
+            </div>
+            <div class="terminal-body">
+                <div class="terminal-line"><span class="t-comment"># 1. Sign up and add your Supabase credentials</span></div>
+                <div class="terminal-line"><span class="t-comment"># 2. Get your secure endpoint URL</span></div>
+                <div class="terminal-line"><span class="t-key">endpoint</span>: <span class="t-url">https://mcpserver.design/api/mcp/abc123</span></div>
+                <div class="terminal-line">&nbsp;</div>
+                <div class="terminal-line"><span class="t-comment"># 3. Ask Claude anything about your data</span></div>
+                <div class="terminal-line"><span class="t-prompt">→</span> <span class="t-string">"Show me users who signed up in the last 7 days"</span></div>
+                <div class="terminal-line"><span class="t-success">✓ 23 rows returned from users table (read-only)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAIN POINTS -->
+    <section class="section">
+        <p class="section-label">The problem</p>
+        <h2 class="section-title">Local MCP servers <span class="muted">are a pain</span></h2>
+        <div class="pain-grid">
+            <div class="pain-card">
+                <div class="pain-icon">🔧</div>
+                <h3>Config per device</h3>
+                <p>JSON config files, .env files, API keys scattered across every machine. Set it up once, then do it again on your laptop, your desktop, your CI.</p>
+            </div>
+            <div class="pain-card">
+                <div class="pain-icon">🚨</div>
+                <h3>No safety net</h3>
+                <p>One wrong query could hit production. No read-only defaults, no audit trail, no guardrails. Your credentials sit in plaintext.</p>
+            </div>
+            <div class="pain-card">
+                <div class="pain-icon">👤</div>
+                <h3>Solo only</h3>
+                <p>Every team member maintains their own local setup. No shared credentials, no central logging, no way to see who queried what.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="section" id="how-it-works">
+        <p class="section-label">How it works</p>
+        <h2 class="section-title">Three steps. <span class="muted">Under a minute.</span></h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                    <h3>Add your Supabase credentials</h3>
+                    <p>Paste your Supabase project URL and service role key. We encrypt everything with AES-256 before it touches our database.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                    <h3>Get your MCP endpoint URL</h3>
+                    <p>We generate a unique, secure gateway URL for your connection. One URL that works on every device.</p>
+                    <code>https://mcpserver.design/api/mcp/your-endpoint-id</code>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div>
+                    <h3>Paste into Claude Desktop</h3>
+                    <p>Add the URL to Claude Desktop's MCP settings. That's it. Start asking questions about your database in plain English.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- WHAT YOU CAN ASK -->
+    <section class="section">
+        <p class="section-label">Try it</p>
+        <h2 class="section-title">Ask Claude about <span class="muted">your Supabase</span></h2>
+        <div class="query-grid">
+            <div class="query-card">
+                <div class="query">"What tables are in my database?"</div>
+                <div class="desc">Lists all tables and their schemas instantly</div>
+            </div>
+            <div class="query-card">
+                <div class="query">"Show me users who signed up this week"</div>
+                <div class="desc">Queries your users table with date filtering</div>
+            </div>
+            <div class="query-card">
+                <div class="query">"How many active subscriptions do I have?"</div>
+                <div class="desc">Counts and aggregates from your subscriptions table</div>
+            </div>
+            <div class="query-card">
+                <div class="query">"Describe the orders table structure"</div>
+                <div class="desc">Returns columns, types, and relationships</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section class="section">
+        <p class="section-label">Compare</p>
+        <h2 class="section-title">Local MCP <span class="muted">vs. Synra</span></h2>
+        <div class="comparison">
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Local MCP Server</th>
+                        <th>Synra</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Setup time</td>
+                        <td>30+ minutes per device</td>
+                        <td>Under 60 seconds</td>
+                    </tr>
+                    <tr>
+                        <td>Config files</td>
+                        <td>JSON + .env per machine</td>
+                        <td>One URL. Done.</td>
+                    </tr>
+                    <tr>
+                        <td>Credential security</td>
+                        <td>Plaintext in .env files</td>
+                        <td>AES-256 encrypted</td>
+                    </tr>
+                    <tr>
+                        <td>Read-only mode</td>
+                        <td><span class="x">✗</span> Manual setup</td>
+                        <td>On by default</td>
+                    </tr>
+                    <tr>
+                        <td>Audit logging</td>
+                        <td><span class="x">✗</span> None</td>
+                        <td>Every query logged</td>
+                    </tr>
+                    <tr>
+                        <td>SQL injection protection</td>
+                        <td><span class="x">✗</span> You handle it</td>
+                        <td>Built-in sanitization</td>
+                    </tr>
+                    <tr>
+                        <td>Team sharing</td>
+                        <td><span class="x">✗</span> Everyone self-manages</td>
+                        <td>Central dashboard</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section class="section">
+        <p class="section-label">Security</p>
+        <h2 class="section-title">Built for production <span class="muted">from day one</span></h2>
+        <div class="security-grid">
+            <div class="sec-card">
+                <h3>Read-only default</h3>
+                <p>Only SELECT queries allowed. No INSERT, UPDATE, DELETE, DROP, or ALTER.</p>
+            </div>
+            <div class="sec-card">
+                <h3>AES-256 encryption</h3>
+                <p>Your Supabase credentials are encrypted at rest. Decrypted only at request time.</p>
+            </div>
+            <div class="sec-card">
+                <h3>SQL sanitization</h3>
+                <p>Every query is scanned for destructive keywords before execution.</p>
+            </div>
+            <div class="sec-card">
+                <h3>Audit logs</h3>
+                <p>Full history of every query, who ran it, and when. Exportable.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="section" id="pricing">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-title">Simple pricing. <span class="muted">No surprises.</span></h2>
+        <div class="pricing-grid">
+            <div class="price-card">
+                <div class="price-name">Starter</div>
+                <div class="price-amount">$19<span>/mo</span></div>
+                <div class="price-desc">For solo developers</div>
+                <ul class="price-features">
+                    <li>5 credentials</li>
+                    <li>10,000 requests/day</li>
+                    <li>Read-only access</li>
+                    <li>Supabase connector</li>
+                    <li>Email support</li>
+                </ul>
+                <a href="/dashboard" class="btn-secondary" style="width:100%;justify-content:center;">Get Started</a>
+            </div>
+            <div class="price-card featured">
+                <div class="price-name">Pro</div>
+                <div class="price-amount">$49<span>/mo</span></div>
+                <div class="price-desc">For growing teams</div>
+                <ul class="price-features">
+                    <li>25 credentials</li>
+                    <li>100,000 requests/day</li>
+                    <li>Read-only access</li>
+                    <li>Supabase connector</li>
+                    <li>Priority support</li>
+                    <li>Usage analytics</li>
+                </ul>
+                <a href="/dashboard" class="btn-primary" style="width:100%;justify-content:center;">Start Free Trial</a>
+            </div>
+            <div class="price-card">
+                <div class="price-name">Team</div>
+                <div class="price-amount">$149<span>/mo</span></div>
+                <div class="price-desc">For teams that need control</div>
+                <ul class="price-features">
+                    <li>Unlimited credentials</li>
+                    <li>Unlimited requests</li>
+                    <li>Read-only access</li>
+                    <li>Supabase connector</li>
+                    <li>Dedicated support</li>
+                    <li>Team management</li>
+                    <li>Advanced audit logs</li>
+                </ul>
+                <a href="/dashboard" class="btn-secondary" style="width:100%;justify-content:center;">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+        <p class="section-label">FAQ</p>
+        <h2 class="section-title">Common questions</h2>
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-q">What databases do you support?</div>
+                <div class="faq-a">Supabase is live right now. We're working on PostgreSQL and more connectors — if there's something specific you need, let us know.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Is my data safe?</div>
+                <div class="faq-a">Yes. All connections are read-only by default — we block INSERT, UPDATE, DELETE, DROP, and ALTER at the gateway level. Your credentials are encrypted with AES-256 and only decrypted at request time. Every query is logged.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">How does it work with Claude Desktop?</div>
+                <div class="faq-a">You paste your Synra endpoint URL into Claude Desktop's MCP server settings. No JSON config files, no .env setup. Claude can then query your database through our secure gateway.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Can Claude modify my database?</div>
+                <div class="faq-a">No. Synra only allows SELECT queries. Any attempt to run INSERT, UPDATE, DELETE, or other write operations is blocked and logged.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Do you store my query results?</div>
+                <div class="faq-a">No. We log metadata (which tool was called, when, and response status) for your audit trail, but we never store the actual data returned from your database.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Can I try it before paying?</div>
+                <div class="faq-a">Yes — sign up and try it with the Starter plan. Cancel anytime if it's not for you.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <h2>Stop managing local MCP servers.</h2>
+        <p>Get your secure endpoint URL in under 60 seconds. Connect Claude to your Supabase and start querying.</p>
+        <a href="/dashboard" class="btn-primary">Get Started Free →</a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="logo" style="font-size:14px;">
+            <span class="logo-dot" style="width:6px;height:6px;"></span>
+            synra
+        </div>
+        <div class="footer-links">
+            <a href="/blog">Blog</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+        </div>
+        <div>© 2026 Synra</div>
+    </footer>
+
+</body>
+</html>
