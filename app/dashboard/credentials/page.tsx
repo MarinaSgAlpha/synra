@@ -534,84 +534,84 @@ export default function ConnectionsPage() {
                 </div>
 
                 {/* Test Connection Section */}
-                {!hasPaidSubscription && (
-                  <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="text-sm font-medium text-white mb-1">Test Connection</h4>
-                        <p className="text-xs text-gray-500">
-                          {testQueriesRemaining > 0 
+                <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-white mb-1">Test Connection</h4>
+                      <p className="text-xs text-gray-500">
+                        {hasPaidSubscription
+                          ? 'Verify your database connection is working'
+                          : testQueriesRemaining > 0 
                             ? `${testQueriesRemaining} free ${testQueriesRemaining === 1 ? 'query' : 'queries'} remaining`
                             : 'Test queries used up'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleTestConnection(conn.id)}
-                        disabled={testingId === conn.id || testQueriesRemaining <= 0}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {testingId === conn.id ? 'Testing...' : 'Test Connection'}
-                      </button>
+                      </p>
                     </div>
-
-                    {/* Test Results */}
-                    {testResult && (
-                      <div className={`mt-3 p-3 rounded-md ${
-                        testResult.success 
-                          ? 'bg-green-500/10 border border-green-500/20' 
-                          : 'bg-red-500/10 border border-red-500/20'
-                      }`}>
-                        <p className={`text-sm font-medium mb-2 ${
-                          testResult.success ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {testResult.success ? '✅ ' : '❌ '}
-                          {testResult.message || testResult.error}
-                        </p>
-                        {testResult.success && testResult.sample_data && (
-                          <div className="text-xs text-gray-300 space-y-2">
-                            {testResult.sample_data.table_count !== undefined && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">📊</span>
-                                <div>
-                                  <p className="font-medium text-white">
-                                    {testResult.sample_data.table_count === 0 
-                                      ? 'No tables yet' 
-                                      : `${testResult.sample_data.table_count} table${testResult.sample_data.table_count === 1 ? '' : 's'} detected`}
-                                  </p>
-                                  {testResult.sample_data.sample_tables?.length > 0 && (
-                                    <p className="text-gray-400 text-[11px] mt-0.5">
-                                      <span className="font-mono text-blue-400">
-                                        {testResult.sample_data.sample_tables.join(', ')}
-                                      </span>
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {testResult.sample_data.claude_says && (
-                              <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mt-2">
-                                <p className="text-sm text-gray-200 leading-relaxed">
-                                  {testResult.sample_data.claude_says}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {testResult.details && (
-                          <p className="text-xs text-gray-400 mt-2">
-                            Details: {testResult.details}
-                          </p>
-                        )}
-                        {testResult.limit_reached && (
-                          <p className="text-xs text-yellow-400 mt-2">
-                            💡 Subscribe to get unlimited queries
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    <button
+                      onClick={() => handleTestConnection(conn.id)}
+                      disabled={testingId === conn.id || (!hasPaidSubscription && testQueriesRemaining <= 0)}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testingId === conn.id ? 'Testing...' : 'Test Connection'}
+                    </button>
                   </div>
-                )}
+
+                  {/* Test Results */}
+                  {testResult && (
+                    <div className={`mt-3 p-3 rounded-md ${
+                      testResult.success 
+                        ? 'bg-green-500/10 border border-green-500/20' 
+                        : 'bg-red-500/10 border border-red-500/20'
+                    }`}>
+                      <p className={`text-sm font-medium mb-2 ${
+                        testResult.success ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {testResult.success ? '✅ ' : '❌ '}
+                        {testResult.message || testResult.error}
+                      </p>
+                      {testResult.success && testResult.sample_data && (
+                        <div className="text-xs text-gray-300 space-y-2">
+                          {testResult.sample_data.table_count !== undefined && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">📊</span>
+                              <div>
+                                <p className="font-medium text-white">
+                                  {testResult.sample_data.table_count === 0 
+                                    ? 'No tables yet' 
+                                    : `${testResult.sample_data.table_count} table${testResult.sample_data.table_count === 1 ? '' : 's'} detected`}
+                                </p>
+                                {testResult.sample_data.sample_tables?.length > 0 && (
+                                  <p className="text-gray-400 text-[11px] mt-0.5">
+                                    <span className="font-mono text-blue-400">
+                                      {testResult.sample_data.sample_tables.join(', ')}
+                                    </span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {testResult.sample_data.claude_says && (
+                            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mt-2">
+                              <p className="text-sm text-gray-200 leading-relaxed">
+                                {testResult.sample_data.claude_says}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {testResult.details && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          Details: {testResult.details}
+                        </p>
+                      )}
+                      {testResult.limit_reached && !hasPaidSubscription && (
+                        <p className="text-xs text-yellow-400 mt-2">
+                          Subscribe to get unlimited queries
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Subscribe Button */}
                 {!hasPaidSubscription && (
