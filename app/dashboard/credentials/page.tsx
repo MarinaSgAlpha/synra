@@ -433,6 +433,14 @@ export default function ConnectionsPage() {
                 <span className="text-sm text-blue-400">{selectedService.name}</span>
               </div>
 
+              {editingId && (
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-400">
+                    🔒 For security, credentials are encrypted and cannot be displayed. Please re-enter all connection details.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm text-gray-300 mb-2">
                   Connection Name
@@ -528,7 +536,7 @@ export default function ConnectionsPage() {
       )}
 
       {/* Connections list */}
-      {connections.length > 0 ? (
+      {!showForm && connections.length > 0 ? (
         <div className="space-y-3">
           {connections.map((conn) => {
             const fullEndpointUrl = conn.endpoint_url
