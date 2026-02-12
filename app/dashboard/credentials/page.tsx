@@ -35,6 +35,8 @@ export default function ConnectionsPage() {
   const [selectedService, setSelectedService] = useState<SupportedService | null>(null)
   const [credName, setCredName] = useState('')
   const [configValues, setConfigValues] = useState<Record<string, string>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -100,9 +102,12 @@ export default function ConnectionsPage() {
 
   const handleSelectService = (service: SupportedService) => {
     setSelectedService(service)
-    setConfigValues({})
+    // Default SSL to true for PostgreSQL
+    const defaultConfig = service.slug === 'postgresql' ? { ssl: 'true' } : {}
+    setConfigValues(defaultConfig)
     setError(null)
     setSuccess(null)
+    setEditingId(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,44 +119,120 @@ export default function ConnectionsPage() {
     setSuccess(null)
 
     try {
-      const res = await fetch('/api/credentials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: credName,
-          serviceSlug: selectedService.slug,
-          config: configValues,
-        }),
-      })
+      if (editingId) {
+        // Update existing credential
+        const res = await fetch('/api/credentials', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingId,
+            name: credName,
+            config: configValues,
+          }),
+        })
 
-      if (!res.ok) {
-        const data = await res.json()
-        if (data.upgrade_required) {
-          setError(`${data.error} - Upgrade your plan to add more connections.`)
-        } else {
-          setError(data.error || 'Failed to create connection')
+        if (!res.ok) {
+          const data = await res.json()
+          setError(data.error || 'Failed to update connection')
+          setSaving(false)
+          return
         }
-        setSaving(false)
-        return
+
+        const { credential } = await res.json()
+
+        setConnections((prev) =>
+          prev.map((c) => (c.id === editingId ? { ...c, ...credential } : c))
+        )
+
+        setSuccess('Connection updated successfully!')
+        setShowForm(false)
+        setCredName('')
+        setConfigValues({})
+        setSelectedService(null)
+        setEditingId(null)
+      } else {
+        // Create new credential
+        const res = await fetch('/api/credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: credName,
+            serviceSlug: selectedService.slug,
+            config: configValues,
+          }),
+        })
+
+        if (!res.ok) {
+          const data = await res.json()
+          if (data.upgrade_required) {
+            setError(`${data.error} - Upgrade your plan to add more connections.`)
+          } else {
+            setError(data.error || 'Failed to create connection')
+          }
+          setSaving(false)
+          return
+        }
+
+        const { credential, endpoint } = await res.json()
+
+        setConnections((prev) => [
+          { ...credential, endpoint_url: endpoint.endpoint_url },
+          ...prev,
+        ])
+
+        const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
+        setSuccess(`Connection created! Your MCP endpoint: ${fullUrl}`)
+        setShowForm(false)
+        setCredName('')
+        setConfigValues({})
+        setSelectedService(null)
       }
-
-      const { credential, endpoint } = await res.json()
-
-      setConnections((prev) => [
-        { ...credential, endpoint_url: endpoint.endpoint_url },
-        ...prev,
-      ])
-
-      const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
-      setSuccess(`Connection created! Your MCP endpoint: ${fullUrl}`)
-      setShowForm(false)
-      setCredName('')
-      setConfigValues({})
-      setSelectedService(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleEdit = (conn: ConnectionItem) => {
+    // Find the service
+    const service = services.find((s) => s.slug === conn.service_slug)
+    if (!service) return
+
+    setSelectedService(service)
+    setCredName(conn.name)
+    setEditingId(conn.id)
+    setShowForm(true)
+    setError(null)
+    setSuccess(null)
+
+    // Note: config values are encrypted, so we can't pre-populate them
+    // User will need to re-enter credentials
+    setConfigValues({})
+  }
+
+  const handleDelete = async (id: string) => {
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const res = await fetch('/api/credentials', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to delete connection')
+        return
+      }
+
+      setConnections((prev) => prev.filter((c) => c.id !== id))
+      setSuccess('Connection deleted successfully')
+      setDeleteConfirmId(null)
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
@@ -294,7 +375,9 @@ export default function ConnectionsPage() {
       {showForm && (
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white">Add New Connection</h2>
+            <h2 className="text-lg font-semibold text-white">
+              {editingId ? 'Edit Connection' : 'Add New Connection'}
+            </h2>
             <button
               onClick={() => {
                 setShowForm(false)
@@ -426,7 +509,7 @@ export default function ConnectionsPage() {
                   disabled={saving}
                   className="px-5 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium rounded-md transition-all"
                 >
-                  {saving ? 'Saving...' : 'Save Connection'}
+                  {saving ? 'Saving...' : editingId ? 'Update Connection' : 'Save Connection'}
                 </button>
                 <button
                   type="button"
@@ -477,6 +560,20 @@ export default function ConnectionsPage() {
                     <span className="px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full">
                       {conn.service_slug}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEdit(conn)}
+                      className="px-3 py-1 text-xs text-gray-400 hover:text-white bg-[#0a0a0a] hover:bg-[#1c1c1c] border border-[#1c1c1c] rounded transition-all"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirmId(conn.id)}
+                      className="px-3 py-1 text-xs text-red-400 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded transition-all"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
 
@@ -660,6 +757,32 @@ export default function ConnectionsPage() {
             </button>
           </div>
         )
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-white mb-3">Delete Connection?</h3>
+            <p className="text-sm text-gray-400 mb-6">
+              This will permanently delete this connection and its MCP endpoint. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded transition-all"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-2 bg-[#0a0a0a] hover:bg-[#1c1c1c] text-gray-300 hover:text-white text-sm font-medium rounded border border-[#1c1c1c] transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

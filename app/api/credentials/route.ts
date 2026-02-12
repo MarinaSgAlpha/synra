@@ -166,3 +166,142 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+// PATCH — update an existing credential
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createServerClient()
+    const admin = createAdminClient()
+
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id, name, config } = await request.json()
+
+    if (!id || !name || !config) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Get user's organization
+    const { data: membership } = await admin
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', authUser.id)
+      .single()
+
+    if (!membership) {
+      return NextResponse.json({ error: 'No organization found' }, { status: 404 })
+    }
+
+    // Verify the credential belongs to this organization
+    const { data: existingCred } = await admin
+      .from('credentials')
+      .select('id, organization_id')
+      .eq('id', id)
+      .eq('organization_id', membership.organization_id)
+      .single()
+
+    if (!existingCred) {
+      return NextResponse.json({ error: 'Credential not found' }, { status: 404 })
+    }
+
+    // Encrypt sensitive config values
+    const encryptedConfig: Record<string, string> = {}
+    for (const [key, value] of Object.entries(config)) {
+      if (typeof value === 'string' && value.length > 0) {
+        encryptedConfig[key] = encrypt(value as string)
+      }
+    }
+
+    // Update credential
+    const { data: credential, error: credError } = await admin
+      .from('credentials')
+      .update({
+        name,
+        config: encryptedConfig,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (credError) throw new Error(`Failed to update credential: ${credError.message}`)
+
+    return NextResponse.json({
+      credential: {
+        id: credential.id,
+        name: credential.name,
+        service_slug: credential.service_slug,
+        is_active: credential.is_active,
+        created_at: credential.created_at,
+        updated_at: credential.updated_at,
+      },
+    })
+  } catch (error: any) {
+    console.error('PATCH credentials error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+// DELETE — delete a credential and its associated endpoint
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createServerClient()
+    const admin = createAdminClient()
+
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await request.json()
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing credential ID' }, { status: 400 })
+    }
+
+    // Get user's organization
+    const { data: membership } = await admin
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', authUser.id)
+      .single()
+
+    if (!membership) {
+      return NextResponse.json({ error: 'No organization found' }, { status: 404 })
+    }
+
+    // Verify the credential belongs to this organization
+    const { data: existingCred } = await admin
+      .from('credentials')
+      .select('id, organization_id')
+      .eq('id', id)
+      .eq('organization_id', membership.organization_id)
+      .single()
+
+    if (!existingCred) {
+      return NextResponse.json({ error: 'Credential not found' }, { status: 404 })
+    }
+
+    // Delete associated MCP endpoints first (foreign key constraint)
+    await admin
+      .from('mcp_endpoints')
+      .delete()
+      .eq('credential_id', id)
+
+    // Delete the credential
+    const { error: deleteError } = await admin
+      .from('credentials')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) throw new Error(`Failed to delete credential: ${deleteError.message}`)
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('DELETE credentials error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
