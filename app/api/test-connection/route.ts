@@ -3,8 +3,23 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { decrypt } from '@/lib/encryption'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Client as PgClient } from 'pg'
 
 const MAX_TEST_QUERIES = 10
+
+function generateClaudeMessage(tables: string[], tableCount: number): string {
+  if (tableCount === 0) {
+    return "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL."
+  } else if (tableCount === 1) {
+    return `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+  } else if (tableCount <= 5) {
+    const tableList = tables.slice(0, 3).join(', ')
+    return `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+  } else {
+    const sampleTables = tables.slice(0, 3).join(', ')
+    return `Hello! I'm Claude 👋 Your database looks great - I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+  }
+}
 
 // POST — Execute a test query to show value (max 10 free queries)
 export async function POST(request: NextRequest) {
@@ -84,6 +99,80 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const remainingQueries = hasPaidSubscription 
+      ? 'unlimited' 
+      : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
+
+    // Get service_slug to determine which test to run
+    const serviceSlug = credential.service_slug
+
+    // ── PostgreSQL test connection ─────────────────────────────────
+    if (serviceSlug === 'postgresql') {
+      const host = decryptedConfig.host
+      const port = decryptedConfig.port || '5432'
+      const database = decryptedConfig.database
+      const user = decryptedConfig.user
+      const password = decryptedConfig.password
+      const useSsl = decryptedConfig.ssl === 'true' || decryptedConfig.ssl === '1'
+
+      if (!host || !database || !user || !password) {
+        return NextResponse.json({ error: 'Incomplete PostgreSQL credentials' }, { status: 400 })
+      }
+
+      const pgClient = new PgClient({
+        host,
+        port: parseInt(port, 10) || 5432,
+        database,
+        user,
+        password,
+        ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+        connectionTimeoutMillis: 10000,
+        statement_timeout: 15000,
+      })
+
+      try {
+        await pgClient.connect()
+
+        const result = await pgClient.query(
+          `SELECT table_name 
+           FROM information_schema.tables 
+           WHERE table_schema = 'public' 
+           AND table_type = 'BASE TABLE'
+           ORDER BY table_name`
+        )
+
+        const tables = result.rows.map((r: any) => r.table_name)
+        const tableCount = tables.length
+
+        const claudeMessage = generateClaudeMessage(tables, tableCount)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Connection successful!',
+          sample_data: {
+            table_count: tableCount,
+            sample_tables: tables.slice(0, 5),
+            claude_says: claudeMessage,
+          },
+          remaining_test_queries: remainingQueries,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: 'PostgreSQL connection failed',
+          details: err.message || 'Unable to connect to database',
+        })
+      } finally {
+        try {
+          await pgClient.end()
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
+
+    // ── Supabase test connection (default) ─────────────────────────
+
     // Get Supabase URL and key
     const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url
     const apiKey = decryptedConfig.service_role_key || decryptedConfig.api_key || decryptedConfig.anon_key || decryptedConfig.key
@@ -103,10 +192,6 @@ export async function POST(request: NextRequest) {
           'Accept': 'application/openapi+json',
         },
       })
-
-      const remainingQueries = hasPaidSubscription 
-        ? 'unlimited' 
-        : MAX_TEST_QUERIES - (credential.test_queries_used || 0) - 1
 
       // Check for auth errors
       if (!schemaResponse.ok && schemaResponse.status === 401) {
@@ -136,19 +221,7 @@ export async function POST(request: NextRequest) {
         // If we can't parse schema, that's OK - connection still works
       }
 
-      // Generate Claude's personalized message
-      let claudeMessage = ''
-      if (tableCount === 0) {
-        claudeMessage = "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL."
-      } else if (tableCount === 1) {
-        claudeMessage = `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
-      } else if (tableCount <= 5) {
-        const tableList = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
-      } else {
-        const sampleTables = tables.slice(0, 3).join(', ')
-        claudeMessage = `Hello! I'm Claude 👋 Your database looks great - I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
-      }
+      const claudeMessage = generateClaudeMessage(tables, tableCount)
 
       return NextResponse.json({
         success: true,

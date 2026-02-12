@@ -57,7 +57,7 @@ export interface SupportedService {
     fields: Array<{
       key: string;
       label: string;
-      type: 'text' | 'password' | 'url';
+      type: 'text' | 'password' | 'url' | 'checkbox';
       required: boolean;
       encrypted: boolean;
       placeholder?: string;

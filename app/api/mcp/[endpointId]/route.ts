@@ -10,6 +10,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { decrypt } from '@/lib/encryption'
 import { SUPABASE_TOOLS, handleSupabaseTool } from '@/lib/mcp-handlers/supabase'
+import { POSTGRESQL_TOOLS, handlePostgresqlTool } from '@/lib/mcp-handlers/postgresql'
+import type { PostgresqlConfig } from '@/lib/mcp-handlers/postgresql'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── JSON-RPC Helpers ───────────────────────────────────────────────
@@ -194,7 +196,11 @@ export async function POST(
 
     // ── List tools ──────────────────────────────────────────────────
     case 'tools/list': {
-      let tools = SUPABASE_TOOLS
+      // Select tool definitions based on service
+      let tools =
+        endpoint.service_slug === 'postgresql'
+          ? POSTGRESQL_TOOLS
+          : SUPABASE_TOOLS
 
       // Filter by allowed_tools if set on the endpoint
       if (
@@ -219,8 +225,14 @@ export async function POST(
         return jsonRpcError(id, -32602, 'Invalid params: tool name is required')
       }
 
+      // Select tool definitions based on service
+      const availableTools =
+        endpoint.service_slug === 'postgresql'
+          ? POSTGRESQL_TOOLS
+          : SUPABASE_TOOLS
+
       // Verify tool exists
-      const toolExists = SUPABASE_TOOLS.some((t) => t.name === toolName)
+      const toolExists = availableTools.some((t) => t.name === toolName)
       if (!toolExists) {
         return jsonRpcError(id, -32601, `Tool not found: ${toolName}`)
       }
@@ -251,30 +263,50 @@ export async function POST(
         )
       }
 
-      // Support various config key names for flexibility
-      const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url
-      const apiKey =
-        decryptedConfig.service_role_key ||
-        decryptedConfig.api_key ||
-        decryptedConfig.anon_key ||
-        decryptedConfig.key
+      // Route to the correct handler based on service
+      let result
 
-      if (!supabaseUrl || !apiKey) {
-        const availableKeys = Object.keys(decryptedConfig).join(', ')
-        return jsonRpcError(
-          id,
-          -32000,
-          `Incomplete credentials. Found keys: [${availableKeys}]. Need a URL and API key.`
-        )
+      if (endpoint.service_slug === 'postgresql') {
+        // PostgreSQL: extract connection params
+        const pgConfig: PostgresqlConfig = {
+          host: decryptedConfig.host,
+          port: decryptedConfig.port || '5432',
+          database: decryptedConfig.database,
+          user: decryptedConfig.user,
+          password: decryptedConfig.password,
+          ssl: decryptedConfig.ssl,
+        }
+
+        if (!pgConfig.host || !pgConfig.database || !pgConfig.user || !pgConfig.password) {
+          const availableKeys = Object.keys(decryptedConfig).join(', ')
+          return jsonRpcError(
+            id,
+            -32000,
+            `Incomplete PostgreSQL credentials. Found keys: [${availableKeys}]. Need host, database, user, and password.`
+          )
+        }
+
+        result = await handlePostgresqlTool(toolName, toolArgs, pgConfig)
+      } else {
+        // Supabase (default)
+        const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url
+        const apiKey =
+          decryptedConfig.service_role_key ||
+          decryptedConfig.api_key ||
+          decryptedConfig.anon_key ||
+          decryptedConfig.key
+
+        if (!supabaseUrl || !apiKey) {
+          const availableKeys = Object.keys(decryptedConfig).join(', ')
+          return jsonRpcError(
+            id,
+            -32000,
+            `Incomplete credentials. Found keys: [${availableKeys}]. Need a URL and API key.`
+          )
+        }
+
+        result = await handleSupabaseTool(toolName, toolArgs, supabaseUrl, apiKey)
       }
-
-      // Execute the tool
-      const result = await handleSupabaseTool(
-        toolName,
-        toolArgs,
-        supabaseUrl,
-        apiKey
-      )
 
       const durationMs = Date.now() - startTime
 

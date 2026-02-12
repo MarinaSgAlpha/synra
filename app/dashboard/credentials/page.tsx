@@ -179,6 +179,63 @@ export default function ConnectionsPage() {
         },
       ]
     }
+    if (service.slug === 'postgresql') {
+      return [
+        {
+          key: 'host',
+          label: 'Host',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'db.example.com',
+          hint: 'Your database host address (e.g. from Neon, Railway, RDS, etc.)',
+        },
+        {
+          key: 'port',
+          label: 'Port',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: '5432',
+          hint: 'Usually 5432 for PostgreSQL',
+        },
+        {
+          key: 'database',
+          label: 'Database Name',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'mydb',
+          hint: 'The name of the database to connect to',
+        },
+        {
+          key: 'user',
+          label: 'Username',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'postgres',
+          hint: 'Your database username',
+        },
+        {
+          key: 'password',
+          label: 'Password',
+          type: 'password' as const,
+          required: true,
+          encrypted: true,
+          placeholder: '',
+          hint: 'Your database password',
+        },
+        {
+          key: 'ssl',
+          label: 'Require SSL',
+          type: 'checkbox' as const,
+          required: false,
+          encrypted: false,
+          hint: 'Enable for cloud-hosted databases (recommended)',
+        },
+      ]
+    }
     if (service.config_schema && Array.isArray(service.config_schema.fields)) {
       return service.config_schema.fields
     }
@@ -309,32 +366,56 @@ export default function ConnectionsPage() {
 
               {getConfigFields(selectedService).map((field) => (
                 <div key={field.key}>
-                  <label className="block text-sm text-gray-300 mb-1">
-                    {field.label}
-                    {field.required && <span className="text-red-400 ml-1">*</span>}
-                    {field.hint && (
-                      <span className="text-[11px] text-gray-500 font-normal ml-2">
-                        ({field.hint})
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type={field.type === 'password' ? 'password' : 'text'}
-                    value={configValues[field.key] || ''}
-                    onChange={(e) =>
-                      setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
-                    required={field.required}
-                    placeholder={field.placeholder || ''}
-                    autoComplete="new-password"
-                    data-1p-ignore
-                    data-lpignore="true"
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono mt-1"
-                  />
-                  {field.encrypted && (
-                    <p className="text-[11px] text-gray-600 mt-1">
-                      🔒 This value will be encrypted before storage
-                    </p>
+                  {field.type === 'checkbox' ? (
+                    <label className="flex items-center gap-3 cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        checked={configValues[field.key] === 'true'}
+                        onChange={(e) =>
+                          setConfigValues((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.checked ? 'true' : 'false',
+                          }))
+                        }
+                        className="w-4 h-4 rounded border-[#1c1c1c] bg-[#0a0a0a] text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                      />
+                      <span className="text-sm text-gray-300">{field.label}</span>
+                      {field.hint && (
+                        <span className="text-[11px] text-gray-500 font-normal">
+                          ({field.hint})
+                        </span>
+                      )}
+                    </label>
+                  ) : (
+                    <>
+                      <label className="block text-sm text-gray-300 mb-1">
+                        {field.label}
+                        {field.required && <span className="text-red-400 ml-1">*</span>}
+                        {field.hint && (
+                          <span className="text-[11px] text-gray-500 font-normal ml-2">
+                            ({field.hint})
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type={field.type === 'password' ? 'password' : 'text'}
+                        value={configValues[field.key] || ''}
+                        onChange={(e) =>
+                          setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                        required={field.required}
+                        placeholder={field.placeholder || ''}
+                        autoComplete="new-password"
+                        data-1p-ignore
+                        data-lpignore="true"
+                        className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono mt-1"
+                      />
+                      {field.encrypted && (
+                        <p className="text-[11px] text-gray-600 mt-1">
+                          🔒 This value will be encrypted before storage
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
