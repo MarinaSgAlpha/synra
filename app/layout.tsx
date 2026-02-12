@@ -44,6 +44,10 @@ export default function RootLayout({
             gtag('config', 'G-ZKDWCL1QP5');
           `}
         </Script>
+        <Script
+          src="https://t.contentsquare.net/uxa/9037ef9b7b84e.js"
+          strategy="afterInteractive"
+        />
       </head>
       <body
         className={`${geistMono.variable} antialiased bg-[#0a0a0a] text-gray-100 min-h-screen font-mono`}
