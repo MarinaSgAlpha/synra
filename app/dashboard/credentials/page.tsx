@@ -103,7 +103,7 @@ export default function ConnectionsPage() {
   const handleSelectService = (service: SupportedService) => {
     setSelectedService(service)
     // Default SSL to true for PostgreSQL
-    const defaultConfig = service.slug === 'postgresql' ? { ssl: 'true' } : {}
+    const defaultConfig: Record<string, string> = service.slug === 'postgresql' ? { ssl: 'true' } : {}
     setConfigValues(defaultConfig)
     setError(null)
     setSuccess(null)
