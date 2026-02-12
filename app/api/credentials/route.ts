@@ -106,11 +106,27 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Encrypt sensitive config values
-    const encryptedConfig: Record<string, string> = {}
+    // Get service schema to determine which fields to encrypt
+    const { data: service } = await admin
+      .from('supported_services')
+      .select('config_schema')
+      .eq('slug', serviceSlug)
+      .single()
+
+    const encryptedFields = new Set<string>()
+    if (service?.config_schema?.fields) {
+      for (const field of service.config_schema.fields) {
+        if (field.encrypted) {
+          encryptedFields.add(field.key)
+        }
+      }
+    }
+
+    // Encrypt only sensitive config values (based on schema)
+    const processedConfig: Record<string, string> = {}
     for (const [key, value] of Object.entries(config)) {
       if (typeof value === 'string' && value.length > 0) {
-        encryptedConfig[key] = encrypt(value as string)
+        processedConfig[key] = encryptedFields.has(key) ? encrypt(value as string) : value
       }
     }
 
@@ -121,7 +137,7 @@ export async function POST(request: NextRequest) {
         organization_id: membership.organization_id,
         service_slug: serviceSlug,
         name,
-        config: encryptedConfig,
+        config: processedConfig,
         is_active: true,
         created_by: authUser.id,
       })
@@ -198,7 +214,7 @@ export async function PATCH(request: NextRequest) {
     // Verify the credential belongs to this organization
     const { data: existingCred } = await admin
       .from('credentials')
-      .select('id, organization_id')
+      .select('id, organization_id, service_slug')
       .eq('id', id)
       .eq('organization_id', membership.organization_id)
       .single()
@@ -207,11 +223,27 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Credential not found' }, { status: 404 })
     }
 
-    // Encrypt sensitive config values
-    const encryptedConfig: Record<string, string> = {}
+    // Get service schema to determine which fields to encrypt
+    const { data: service } = await admin
+      .from('supported_services')
+      .select('config_schema')
+      .eq('slug', existingCred.service_slug)
+      .single()
+
+    const encryptedFields = new Set<string>()
+    if (service?.config_schema?.fields) {
+      for (const field of service.config_schema.fields) {
+        if (field.encrypted) {
+          encryptedFields.add(field.key)
+        }
+      }
+    }
+
+    // Encrypt only sensitive config values (based on schema)
+    const processedConfig: Record<string, string> = {}
     for (const [key, value] of Object.entries(config)) {
       if (typeof value === 'string' && value.length > 0) {
-        encryptedConfig[key] = encrypt(value as string)
+        processedConfig[key] = encryptedFields.has(key) ? encrypt(value as string) : value
       }
     }
 
@@ -220,7 +252,7 @@ export async function PATCH(request: NextRequest) {
       .from('credentials')
       .update({
         name,
-        config: encryptedConfig,
+        config: processedConfig,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

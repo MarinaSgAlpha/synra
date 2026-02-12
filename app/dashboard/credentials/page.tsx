@@ -194,7 +194,7 @@ export default function ConnectionsPage() {
     }
   }
 
-  const handleEdit = (conn: ConnectionItem) => {
+  const handleEdit = async (conn: ConnectionItem) => {
     // Find the service
     const service = services.find((s) => s.slug === conn.service_slug)
     if (!service) return
@@ -206,9 +206,29 @@ export default function ConnectionsPage() {
     setError(null)
     setSuccess(null)
 
-    // Note: config values are encrypted, so we can't pre-populate them
-    // User will need to re-enter credentials
-    setConfigValues({})
+    // Fetch the full credential config (non-sensitive fields will be readable)
+    try {
+      const res = await fetch(`/api/credentials/${conn.id}`)
+      if (res.ok) {
+        const { credential } = await res.json()
+        // Pre-populate non-encrypted fields from config
+        const config = credential.config || {}
+        const nonEncryptedValues: Record<string, string> = {}
+        
+        // Only populate fields that are NOT marked as encrypted in the schema
+        const fields = getConfigFields(service)
+        for (const field of fields) {
+          if (!field.encrypted && config[field.key]) {
+            nonEncryptedValues[field.key] = config[field.key]
+          }
+        }
+        
+        setConfigValues(nonEncryptedValues)
+      }
+    } catch (err) {
+      // If fetch fails, just start with empty values
+      setConfigValues({})
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -436,7 +456,7 @@ export default function ConnectionsPage() {
               {editingId && (
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
                   <p className="text-xs text-blue-400">
-                    🔒 For security, credentials are encrypted and cannot be displayed. Please re-enter all connection details.
+                    🔒 For security, sensitive fields (passwords, API keys) are encrypted and must be re-entered.
                   </p>
                 </div>
               )}
