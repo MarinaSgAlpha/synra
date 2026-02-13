@@ -8,7 +8,12 @@ export const PLAN_LIMITS = {
     features: ['read_only'],
   },
   starter: {
-    max_credentials: 5,
+    max_credentials: 2,
+    daily_requests: 10000,
+    features: ['read_only'],
+  },
+  lifetime: {
+    max_credentials: 2,
     daily_requests: 10000,
     features: ['read_only'],
   },

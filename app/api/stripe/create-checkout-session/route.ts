@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const { plan } = await request.json()
-    if (!plan || !['starter', 'pro', 'team'].includes(plan)) {
+    if (!plan || !['starter', 'pro', 'team', 'lifetime'].includes(plan)) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
 
@@ -76,9 +76,13 @@ export async function POST(request: NextRequest) {
 
     // Create Checkout Session
     const origin = request.headers.get('origin') || 'http://localhost:3000'
+    
+    // Lifetime is one-time payment, others are subscriptions
+    const mode = plan === 'lifetime' ? 'payment' : 'subscription'
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: 'subscription',
+      mode,
       payment_method_types: ['card'],
       line_items: [
         {

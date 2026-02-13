@@ -41,10 +41,22 @@ export const PLANS = {
     price: 19,
     priceId: process.env.STRIPE_PRICE_ID_STARTER,
     features: [
-      '5 credentials',
+      '2 database connections',
       '10,000 requests/day',
       'Read-only access',
       'Email support',
+    ],
+  },
+  lifetime: {
+    name: 'Lifetime',
+    price: 69,
+    priceId: process.env.STRIPE_PRICE_ID_LIFETIME,
+    features: [
+      '2 database connections',
+      '10,000 requests/day',
+      'Read-only access',
+      'Email support',
+      'Lifetime updates',
     ],
   },
   pro: {

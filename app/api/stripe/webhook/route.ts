@@ -106,28 +106,50 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
     throw new Error('Missing organization_id or plan in session metadata')
   }
 
-  const subscriptionId = session.subscription as string
   const customerId = session.customer as string
 
-  // Update subscription record
-  await admin
-    .from('subscriptions')
-    .update({
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      status: 'active',
-      plan,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('organization_id', organizationId)
+  // Lifetime is a one-time payment (mode: 'payment'), subscriptions have subscription IDs
+  if (plan === 'lifetime') {
+    // One-time payment for lifetime access
+    await admin
+      .from('subscriptions')
+      .update({
+        stripe_customer_id: customerId,
+        stripe_subscription_id: null, // No recurring subscription
+        status: 'active',
+        plan: 'lifetime',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', organizationId)
 
-  // Update organization plan
-  await admin
-    .from('organizations')
-    .update({ plan, updated_at: new Date().toISOString() })
-    .eq('id', organizationId)
+    await admin
+      .from('organizations')
+      .update({ plan: 'lifetime', updated_at: new Date().toISOString() })
+      .eq('id', organizationId)
 
-  console.log(`✅ Subscription activated for org ${organizationId}: ${plan}`)
+    console.log(`✅ Lifetime plan activated for org ${organizationId}`)
+  } else {
+    // Recurring subscription (starter, pro, team)
+    const subscriptionId = session.subscription as string
+
+    await admin
+      .from('subscriptions')
+      .update({
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        status: 'active',
+        plan,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', organizationId)
+
+    await admin
+      .from('organizations')
+      .update({ plan, updated_at: new Date().toISOString() })
+      .eq('id', organizationId)
+
+    console.log(`✅ Subscription activated for org ${organizationId}: ${plan}`)
+  }
 }
 
 // Handle subscription updates
