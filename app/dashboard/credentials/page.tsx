@@ -37,6 +37,7 @@ export default function ConnectionsPage() {
   const [configValues, setConfigValues] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [showPricingModal, setShowPricingModal] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -742,26 +743,10 @@ export default function ConnectionsPage() {
                 {!hasPaidSubscription && (
                   <div className="flex justify-center">
                     <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch('/api/stripe/create-checkout-session', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ plan: 'starter' }),
-                          })
-                          const data = await res.json()
-                          if (data.url) {
-                            window.location.href = data.url
-                          } else {
-                            setError(data.error || 'Failed to start checkout')
-                          }
-                        } catch (err) {
-                          setError('Failed to start checkout')
-                        }
-                      }}
+                      onClick={() => setShowPricingModal(true)}
                       className="px-6 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center whitespace-nowrap"
                     >
-                      Subscribe to Unlock Full Access ($19/mo)
+                      Upgrade to Unlock Full Access
                     </button>
                   </div>
                 )}
@@ -808,6 +793,178 @@ export default function ConnectionsPage() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pricing Modal */}
+      {showPricingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-2">Choose Your Plan</h3>
+                <p className="text-sm text-gray-400">Select a plan to unlock full access</p>
+              </div>
+              <button
+                onClick={() => setShowPricingModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Starter Monthly */}
+              <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-6 flex flex-col">
+                <div className="mb-4">
+                  <h4 className="text-lg font-semibold text-white mb-2">Starter</h4>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-bold text-white">$19</span>
+                    <span className="text-gray-400">/month</span>
+                  </div>
+                  <p className="text-xs text-gray-500">Cancel anytime</p>
+                </div>
+
+                <ul className="space-y-2 text-sm text-gray-300 mb-6 flex-grow">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>2 database connections</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>10,000 requests/day</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>PostgreSQL & Supabase</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Read-only by default</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>AES-256 encryption</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Full audit logs</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Email support</span>
+                  </li>
+                </ul>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/stripe/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: 'starter' }),
+                      })
+                      const data = await res.json()
+                      if (data.url) {
+                        window.location.href = data.url
+                      } else {
+                        setError(data.error || 'Failed to start checkout')
+                        setShowPricingModal(false)
+                      }
+                    } catch (err) {
+                      setError('Failed to start checkout')
+                      setShowPricingModal(false)
+                    }
+                  }}
+                  className="w-full px-4 py-3 border-2 border-blue-500 hover:border-blue-400 bg-transparent text-blue-400 hover:text-blue-300 text-center text-sm font-medium rounded-lg transition-all"
+                >
+                  Start Monthly Plan
+                </button>
+              </div>
+
+              {/* Lifetime */}
+              <div className="bg-[#0a0a0a] border-2 border-blue-500/50 rounded-lg p-6 flex flex-col relative">
+                <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                  LIMITED TIME
+                </div>
+
+                <div className="mb-4 mt-2">
+                  <h4 className="text-lg font-semibold text-white mb-2">Lifetime Access</h4>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-bold text-white">$69</span>
+                    <span className="text-gray-400">one-time</span>
+                  </div>
+                  <p className="text-xs text-green-400">Pay once, use forever</p>
+                </div>
+
+                <ul className="space-y-2 text-sm text-gray-300 mb-6 flex-grow">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>2 database connections</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>10,000 requests/day</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>PostgreSQL & Supabase</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Read-only by default</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>AES-256 encryption</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Full audit logs</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span>Email support</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 flex-shrink-0">★</span>
+                    <span className="text-blue-400 font-medium">Lifetime updates</span>
+                  </li>
+                </ul>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/stripe/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: 'lifetime' }),
+                      })
+                      const data = await res.json()
+                      if (data.url) {
+                        window.location.href = data.url
+                      } else {
+                        setError(data.error || 'Failed to start checkout')
+                        setShowPricingModal(false)
+                      }
+                    } catch (err) {
+                      setError('Failed to start checkout')
+                      setShowPricingModal(false)
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-center text-sm font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20"
+                >
+                  Get Lifetime Access
+                </button>
+
+                <p className="text-center text-xs text-gray-500 mt-3">
+                  One payment. No recurring fees.
+                </p>
+              </div>
             </div>
           </div>
         </div>
