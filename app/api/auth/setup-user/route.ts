@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name: orgName,
         slug: orgSlug,
+        plan: 'free',
         company_size: companySize || null,
       })
       .select()
@@ -70,12 +71,12 @@ export async function POST(request: NextRequest) {
 
     if (memberError) throw new Error(`Failed to create membership: ${memberError.message}`)
 
-    // 4. Create starter subscription
+    // 4. Create free subscription (unpaid trial)
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: org.id,
-        plan: 'starter',
+        plan: 'free',
         status: 'active',
       })
 
