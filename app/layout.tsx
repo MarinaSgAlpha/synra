@@ -51,7 +51,24 @@ export default function RootLayout({
         <Script id="reddit-pixel" strategy="afterInteractive">
           {`
             !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
-            rdt('init','a2_ie6pid7z8xzv', {"optOut":false,"useDecimalCurrencyValues":true});
+            
+            // Initialize with advanced matching (email will be added client-side if available)
+            var rdtConfig = {"optOut":false,"useDecimalCurrencyValues":true};
+            
+            // Try to get user email from session if available
+            if (typeof window !== 'undefined' && window.localStorage) {
+              try {
+                var session = localStorage.getItem('sb-uubyjcphkmpejdkfwtfe-auth-token');
+                if (session) {
+                  var sessionData = JSON.parse(session);
+                  if (sessionData?.user?.email) {
+                    rdtConfig.email = sessionData.user.email;
+                  }
+                }
+              } catch(e) {}
+            }
+            
+            rdt('init','a2_ie6pid7z8xzv', rdtConfig);
             rdt('track', 'PageVisit');
           `}
         </Script>
