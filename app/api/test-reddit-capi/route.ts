@@ -11,14 +11,13 @@ async function sendTestEvent() {
     return { error: 'REDDIT_CAPI_ACCESS_TOKEN not set' }
   }
 
-  // Test event payload (regular event for testing)
-  // Try common action_source values from Meta/Facebook CAPI
+  // Test event payload - using UPPERCASE per official docs
   const payload = {
     data: {
       events: [
         {
           event_at: Date.now(),
-          action_source: 'other',
+          action_source: 'WEBSITE',
           type: {
             tracking_type: 'Purchase',
           },

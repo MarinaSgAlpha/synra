@@ -5,7 +5,7 @@
 
 interface RedditConversionEvent {
   event_at: number // Unix epoch timestamp in milliseconds
-  action_source: 'other' // Reddit doesn't document valid values, using 'other' as fallback
+  action_source: 'WEBSITE' | 'APP' | 'OFFLINE' // Must be UPPERCASE per official docs
   type: {
     tracking_type: 'Purchase' | 'AddToCart' | 'Lead' | 'SignUp' | 'Custom'
     custom_event_name?: string
@@ -66,7 +66,7 @@ export async function sendRedditConversion(params: {
   try {
     const event: RedditConversionEvent = {
       event_at: Date.now(), // Unix epoch timestamp in milliseconds
-      action_source: 'other',
+      action_source: 'WEBSITE',
       type: {
         tracking_type: params.eventType,
       },
