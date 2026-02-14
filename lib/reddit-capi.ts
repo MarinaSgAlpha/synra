@@ -4,12 +4,13 @@
  */
 
 interface RedditConversionEvent {
-  event_at: string // ISO 8601 timestamp
-  event_type: {
+  event_at: number // Unix epoch timestamp in milliseconds
+  action_source: 'website' | 'app' | 'offline' | 'other'
+  type: {
     tracking_type: 'Purchase' | 'AddToCart' | 'Lead' | 'SignUp' | 'Custom'
     custom_event_name?: string
   }
-  user: {
+  user?: {
     email?: string
     external_id?: string
     ip_address?: string
@@ -29,8 +30,10 @@ interface RedditConversionEvent {
 }
 
 interface RedditCAPIPayload {
-  events: RedditConversionEvent[]
-  test_mode?: boolean
+  data: {
+    events: RedditConversionEvent[]
+    test_mode?: boolean
+  }
 }
 
 /**
@@ -56,8 +59,9 @@ export async function sendRedditConversion(params: {
 
   try {
     const event: RedditConversionEvent = {
-      event_at: new Date().toISOString(),
-      event_type: {
+      event_at: Date.now(), // Unix epoch timestamp in milliseconds
+      action_source: 'website',
+      type: {
         tracking_type: params.eventType,
       },
       user: {
@@ -74,11 +78,14 @@ export async function sendRedditConversion(params: {
     }
 
     const payload: RedditCAPIPayload = {
-      events: [event],
-      test_mode: params.testMode || false,
+      data: {
+        events: [event],
+        test_mode: params.testMode || false,
+      },
     }
 
-    const response = await fetch('https://ads-api.reddit.com/api/v2.0/conversions/events/a2_ie6pid7z8xzv', {
+    // Use Reddit's v3 API endpoint as per their documentation
+    const response = await fetch('https://ads-api.reddit.com/api/v3/pixels/a2_ie6pid7z8xzv/conversion_events', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
