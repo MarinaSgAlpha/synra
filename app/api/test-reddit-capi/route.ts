@@ -30,9 +30,9 @@ async function sendTestEvent() {
             currency: 'USD',
             value: 69,
           },
-          test_id: 't2_1v8win9hr2', // Reddit's test ID
         },
       ],
+      test_mode: true, // Use test_mode instead of test_id
     },
   }
 
