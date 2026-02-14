@@ -48,6 +48,13 @@ export default function RootLayout({
           src="https://t.contentsquare.net/uxa/9037ef9b7b84e.js"
           strategy="afterInteractive"
         />
+        <Script id="reddit-pixel" strategy="afterInteractive">
+          {`
+            !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
+            rdt('init','a2_ie6pid7z8xzv', {"optOut":false,"useDecimalCurrencyValues":true});
+            rdt('track', 'PageVisit');
+          `}
+        </Script>
       </head>
       <body
         className={`${geistMono.variable} antialiased bg-[#0a0a0a] text-gray-100 min-h-screen font-mono`}
