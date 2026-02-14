@@ -17,7 +17,6 @@ async function sendTestEvent() {
       events: [
         {
           event_at: Date.now(),
-          action_source: 'web',
           type: {
             tracking_type: 'Purchase',
           },
