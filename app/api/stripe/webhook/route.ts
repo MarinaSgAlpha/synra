@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe/config'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendRedditConversion } from '@/lib/reddit-capi'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
@@ -108,6 +109,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
 
   const customerId = session.customer as string
   const paymentId = session.payment_intent as string || session.id
+  const customerEmail = session.customer_details?.email || undefined
 
   // Lifetime is a one-time payment (mode: 'payment'), subscriptions have subscription IDs
   if (plan === 'lifetime') {
@@ -130,8 +132,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
 
     console.log(`✅ Lifetime plan activated for org ${organizationId}`)
     
-    // Track Reddit Purchase event (note: Reddit Conversions API would need to be set up for server-side)
-    // For now, client-side tracking will happen when user returns to dashboard
+    // Send Reddit CAPI Purchase event
+    await sendRedditConversion({
+      eventType: 'Purchase',
+      conversionId: organizationId,
+      email: customerEmail,
+      externalId: organizationId,
+      value: 69,
+      currency: 'USD',
+    })
   } else {
     // Recurring subscription (starter, pro, team)
     const subscriptionId = session.subscription as string
@@ -153,6 +162,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
       .eq('id', organizationId)
 
     console.log(`✅ Subscription activated for org ${organizationId}: ${plan}`)
+    
+    // Send Reddit CAPI Purchase event
+    const planValue = plan === 'starter' ? 19 : (plan === 'pro' ? 99 : 299)
+    await sendRedditConversion({
+      eventType: 'Purchase',
+      conversionId: organizationId,
+      email: customerEmail,
+      externalId: organizationId,
+      value: planValue,
+      currency: 'USD',
+    })
   }
 }
 
