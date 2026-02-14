@@ -12,11 +12,13 @@ async function sendTestEvent() {
   }
 
   // Test event payload (regular event for testing)
+  // Try common action_source values from Meta/Facebook CAPI
   const payload = {
     data: {
       events: [
         {
           event_at: Date.now(),
+          action_source: 'other',
           type: {
             tracking_type: 'Purchase',
           },
