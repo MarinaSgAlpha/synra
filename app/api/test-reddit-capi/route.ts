@@ -11,7 +11,7 @@ async function sendTestEvent() {
     return { error: 'REDDIT_CAPI_ACCESS_TOKEN not set' }
   }
 
-  // Test event payload
+  // Test event payload (regular event for testing)
   const payload = {
     data: {
       events: [
@@ -32,7 +32,6 @@ async function sendTestEvent() {
           },
         },
       ],
-      test_mode: true, // Use test_mode instead of test_id
     },
   }
 
