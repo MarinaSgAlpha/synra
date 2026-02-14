@@ -107,6 +107,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
   }
 
   const customerId = session.customer as string
+  const paymentId = session.payment_intent as string || session.id
 
   // Lifetime is a one-time payment (mode: 'payment'), subscriptions have subscription IDs
   if (plan === 'lifetime') {
@@ -128,6 +129,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
       .eq('id', organizationId)
 
     console.log(`✅ Lifetime plan activated for org ${organizationId}`)
+    
+    // Track Reddit Purchase event (note: Reddit Conversions API would need to be set up for server-side)
+    // For now, client-side tracking will happen when user returns to dashboard
   } else {
     // Recurring subscription (starter, pro, team)
     const subscriptionId = session.subscription as string

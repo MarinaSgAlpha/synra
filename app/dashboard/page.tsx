@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react'
 import { useDashboard } from '@/contexts/DashboardContext'
 import Link from 'next/link'
 
+declare global {
+  interface Window {
+    rdt?: (...args: any[]) => void
+  }
+}
+
 export default function DashboardPage() {
   const { user, organization } = useDashboard()
   const [connectionCount, setConnectionCount] = useState<number | null>(null)
@@ -14,6 +20,31 @@ export default function DashboardPage() {
       .then((data) => setConnectionCount(data.credentials?.length ?? 0))
       .catch(() => setConnectionCount(0))
   }, [])
+
+  // Track SignUp event when dashboard loads
+  useEffect(() => {
+    if (user && typeof window !== 'undefined' && window.rdt) {
+      // Track SignUp with user email as conversion ID for deduplication
+      window.rdt('track', 'SignUp', {
+        conversionId: user.email || user.id
+      })
+    }
+  }, [user])
+
+  // Track Purchase event when user has paid plan
+  useEffect(() => {
+    if (organization && typeof window !== 'undefined' && window.rdt) {
+      const isPaid = organization.plan === 'starter' || organization.plan === 'lifetime' || organization.plan === 'pro' || organization.plan === 'team'
+      if (isPaid) {
+        // Track Purchase with organization ID as conversion ID for deduplication
+        window.rdt('track', 'Purchase', {
+          conversionId: organization.id,
+          value: organization.plan === 'lifetime' ? 69 : (organization.plan === 'starter' ? 19 : 0),
+          currency: 'USD'
+        })
+      }
+    }
+  }, [organization])
 
   return (
     <div className="max-w-5xl">

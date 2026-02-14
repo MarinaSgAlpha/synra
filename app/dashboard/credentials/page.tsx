@@ -183,6 +183,14 @@ export default function ConnectionsPage() {
 
         const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
         setSuccess(`Connection created! Your MCP endpoint: ${fullUrl}`)
+        
+        // Track Lead event (first connection created)
+        if (typeof window !== 'undefined' && (window as any).rdt && connections.length === 0) {
+          (window as any).rdt('track', 'Lead', {
+            conversionId: credential.id
+          })
+        }
+        
         setShowForm(false)
         setCredName('')
         setConfigValues({})
