@@ -10,13 +10,19 @@ interface RedditConversionEvent {
     tracking_type: 'Purchase' | 'AddToCart' | 'Lead' | 'SignUp' | 'Custom'
     custom_event_name?: string
   }
+  click_id?: string
   user?: {
     email?: string
     external_id?: string
     ip_address?: string
     user_agent?: string
+    phone_number?: string
+    screen_dimensions?: {
+      width: number
+      height: number
+    }
   }
-  event_metadata?: {
+  metadata?: {
     conversion_id?: string
     currency?: string
     value?: number
@@ -70,7 +76,7 @@ export async function sendRedditConversion(params: {
         ip_address: params.ipAddress,
         user_agent: params.userAgent,
       },
-      event_metadata: {
+      metadata: {
         conversion_id: params.conversionId,
         currency: params.currency || 'USD',
         value: params.value,
