@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email notification
-    await resend.emails.send({
-      from: 'Synra Support <onboarding@resend.dev>', // You'll change this to your domain later
+    console.log('Attempting to send support email via Resend...')
+    const emailResponse = await resend.emails.send({
+      from: 'Synra Support <onboarding@resend.dev>',
       to: 'hello@mcpserver.design',
       replyTo: authUser.email || undefined,
       subject: `Support Request: ${subject}`,
@@ -37,6 +38,12 @@ ${message}
 User ID: ${authUser.id}
       `.trim(),
     })
+
+    console.log('Resend API response:', emailResponse)
+
+    if (emailResponse.error) {
+      throw new Error(emailResponse.error.message)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
