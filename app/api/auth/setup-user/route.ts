@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         slug: orgSlug,
         plan: 'free',
         company_size: companySize || null,
+        use_case: useCase || null,
       })
       .select()
       .single()

@@ -7,6 +7,7 @@ export interface Organization {
   logo_url: string | null;
   plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime';
   company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
+  use_case: string | null; // What user wants to connect: sql, github, etc.
   created_at: string;
   updated_at: string;
 }
