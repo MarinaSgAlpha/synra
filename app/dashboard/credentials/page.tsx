@@ -623,29 +623,18 @@ export default function ConnectionsPage() {
                     <div className="relative">
                       <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md p-3">
                         <code className="text-sm text-blue-400 font-mono flex-1 truncate">
-                          {hasPaidSubscription ? fullEndpointUrl : (() => {
-                            const url = new URL(fullEndpointUrl)
-                            const pathParts = url.pathname.split('/')
-                            const lastPart = pathParts[pathParts.length - 1]
-                            return `${url.origin}/api/mcp/••••••${lastPart.slice(-4)}`
-                          })()}
+                          {fullEndpointUrl}
                         </code>
-                        {hasPaidSubscription ? (
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(fullEndpointUrl)
-                              setCopiedId(conn.id)
-                              setTimeout(() => setCopiedId(null), 2000)
-                            }}
-                            className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
-                          >
-                            {copiedId === conn.id ? 'Copied!' : 'Copy'}
-                          </button>
-                        ) : (
-                          <span className="px-3 py-1 text-xs text-gray-500 flex-shrink-0">
-                            🔒 Hidden
-                          </span>
-                        )}
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(fullEndpointUrl)
+                            setCopiedId(conn.id)
+                            setTimeout(() => setCopiedId(null), 2000)
+                          }}
+                          className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
+                        >
+                          {copiedId === conn.id ? 'Copied!' : 'Copy'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -672,17 +661,11 @@ export default function ConnectionsPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h4 className="text-sm font-medium text-white mb-1">Test Connection</h4>
-                      <p className="text-xs text-gray-500">
-                        {hasPaidSubscription
-                          ? 'Verify your database connection is working'
-                          : testQueriesRemaining > 0 
-                            ? `${testQueriesRemaining} free ${testQueriesRemaining === 1 ? 'query' : 'queries'} remaining`
-                            : 'Test queries used up'}
-                      </p>
+                      <p className="text-xs text-gray-500">Verify your database connection is working</p>
                     </div>
                     <button
                       onClick={() => handleTestConnection(conn.id)}
-                      disabled={testingId === conn.id || (!hasPaidSubscription && testQueriesRemaining <= 0)}
+                      disabled={testingId === conn.id}
                       className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {testingId === conn.id ? 'Testing...' : 'Test Connection'}
@@ -738,26 +721,9 @@ export default function ConnectionsPage() {
                           Details: {testResult.details}
                         </p>
                       )}
-                      {testResult.limit_reached && !hasPaidSubscription && (
-                        <p className="text-xs text-yellow-400 mt-2">
-                          Subscribe to get unlimited queries
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
-
-                {/* Subscribe Button */}
-                {!hasPaidSubscription && (
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => setShowPricingModal(true)}
-                      className="px-6 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all text-center whitespace-nowrap"
-                    >
-                      Upgrade to Unlock Full Access
-                    </button>
-                  </div>
-                )}
               </div>
             )
           })}
