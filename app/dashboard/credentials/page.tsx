@@ -104,7 +104,8 @@ export default function ConnectionsPage() {
   const handleSelectService = (service: SupportedService) => {
     setSelectedService(service)
     // Default SSL to true for PostgreSQL
-    const defaultConfig: Record<string, string> = service.slug === 'postgresql' ? { ssl: 'true' } : {}
+    const defaultConfig: Record<string, string> = 
+      service.slug === 'postgresql' || service.slug === 'mysql' ? { ssl: 'true' } : {}
     setConfigValues(defaultConfig)
     setError(null)
     setSuccess(null)
@@ -325,6 +326,63 @@ export default function ConnectionsPage() {
           required: true,
           encrypted: false,
           placeholder: 'postgres',
+          hint: 'Your database username',
+        },
+        {
+          key: 'password',
+          label: 'Password',
+          type: 'password' as const,
+          required: true,
+          encrypted: true,
+          placeholder: '',
+          hint: 'Your database password',
+        },
+        {
+          key: 'ssl',
+          label: 'Require SSL',
+          type: 'checkbox' as const,
+          required: false,
+          encrypted: false,
+          hint: 'Enable for cloud-hosted databases (recommended)',
+        },
+      ]
+    }
+    if (service.slug === 'mysql') {
+      return [
+        {
+          key: 'host',
+          label: 'Host',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'db.example.com',
+          hint: 'Your MySQL host (e.g. PlanetScale, AWS RDS, Railway)',
+        },
+        {
+          key: 'port',
+          label: 'Port',
+          type: 'text' as const,
+          required: false,
+          encrypted: false,
+          placeholder: '3306',
+          hint: 'Usually 3306 for MySQL',
+        },
+        {
+          key: 'database',
+          label: 'Database Name',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'mydb',
+          hint: 'The name of the database to connect to',
+        },
+        {
+          key: 'user',
+          label: 'Username',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'root',
           hint: 'Your database username',
         },
         {

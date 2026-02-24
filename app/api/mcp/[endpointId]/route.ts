@@ -11,7 +11,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { decrypt } from '@/lib/encryption'
 import { SUPABASE_TOOLS, handleSupabaseTool } from '@/lib/mcp-handlers/supabase'
 import { POSTGRESQL_TOOLS, handlePostgresqlTool } from '@/lib/mcp-handlers/postgresql'
+import { MYSQL_TOOLS, handleMysqlTool } from '@/lib/mcp-handlers/mysql'
 import type { PostgresqlConfig } from '@/lib/mcp-handlers/postgresql'
+import type { MysqlConfig } from '@/lib/mcp-handlers/mysql'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── JSON-RPC Helpers ───────────────────────────────────────────────
@@ -200,7 +202,9 @@ export async function POST(
       let tools =
         endpoint.service_slug === 'postgresql'
           ? POSTGRESQL_TOOLS
-          : SUPABASE_TOOLS
+          : endpoint.service_slug === 'mysql'
+            ? MYSQL_TOOLS
+            : SUPABASE_TOOLS
 
       // Filter by allowed_tools if set on the endpoint
       if (
@@ -229,7 +233,9 @@ export async function POST(
       const availableTools =
         endpoint.service_slug === 'postgresql'
           ? POSTGRESQL_TOOLS
-          : SUPABASE_TOOLS
+          : endpoint.service_slug === 'mysql'
+            ? MYSQL_TOOLS
+            : SUPABASE_TOOLS
 
       // Verify tool exists
       const toolExists = availableTools.some((t) => t.name === toolName)
@@ -287,6 +293,26 @@ export async function POST(
         }
 
         result = await handlePostgresqlTool(toolName, toolArgs, pgConfig)
+      } else if (endpoint.service_slug === 'mysql') {
+        const mysqlConfig: MysqlConfig = {
+          host: decryptedConfig.host,
+          port: decryptedConfig.port || '3306',
+          database: decryptedConfig.database,
+          user: decryptedConfig.user,
+          password: decryptedConfig.password,
+          ssl: decryptedConfig.ssl,
+        }
+
+        if (!mysqlConfig.host || !mysqlConfig.database || !mysqlConfig.user || !mysqlConfig.password) {
+          const availableKeys = Object.keys(decryptedConfig).join(', ')
+          return jsonRpcError(
+            id,
+            -32000,
+            `Incomplete MySQL credentials. Found keys: [${availableKeys}]. Need host, database, user, and password.`
+          )
+        }
+
+        result = await handleMysqlTool(toolName, toolArgs, mysqlConfig)
       } else {
         // Supabase (default)
         const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url

@@ -4,6 +4,7 @@ import { decrypt } from '@/lib/encryption'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Client as PgClient } from 'pg'
+import mysql from 'mysql2/promise'
 
 const MAX_TEST_QUERIES = 10
 
@@ -167,6 +168,73 @@ export async function POST(request: NextRequest) {
           await pgClient.end()
         } catch {
           // Ignore close errors
+        }
+      }
+    }
+
+    // ── MySQL test connection ─────────────────────────────────────
+    if (serviceSlug === 'mysql') {
+      const host = decryptedConfig.host
+      const port = decryptedConfig.port || '3306'
+      const database = decryptedConfig.database
+      const user = decryptedConfig.user
+      const password = decryptedConfig.password
+      const useSsl = decryptedConfig.ssl === 'true' || decryptedConfig.ssl === '1'
+
+      if (!host || !database || !user || !password) {
+        return NextResponse.json({ error: 'Incomplete MySQL credentials' }, { status: 400 })
+      }
+
+      let conn: mysql.Connection | null = null
+
+      try {
+        conn = await mysql.createConnection({
+          host,
+          port: parseInt(port, 10) || 3306,
+          database,
+          user,
+          password,
+          ssl: useSsl ? {} : undefined,
+          connectTimeout: 10000,
+        })
+
+        const [rows] = await conn.execute(
+          `SELECT TABLE_NAME 
+           FROM INFORMATION_SCHEMA.TABLES 
+           WHERE TABLE_SCHEMA = ? 
+           AND TABLE_TYPE = 'BASE TABLE'
+           ORDER BY TABLE_NAME`,
+          [database]
+        )
+
+        const tables = (rows as mysql.RowDataPacket[]).map((r) => r.TABLE_NAME)
+        const tableCount = tables.length
+
+        const claudeMessage = generateClaudeMessage(tables, tableCount)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Connection successful!',
+          sample_data: {
+            table_count: tableCount,
+            sample_tables: tables.slice(0, 5),
+            claude_says: claudeMessage,
+          },
+          remaining_test_queries: remainingQueries,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: 'MySQL connection failed',
+          details: err.message || 'Unable to connect to database',
+        })
+      } finally {
+        if (conn) {
+          try {
+            await conn.end()
+          } catch {
+            // Ignore close errors
+          }
         }
       }
     }

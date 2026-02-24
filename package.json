@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "dotenv": "^17.2.4",
+    "mysql2": "^3.18.0",
     "nanoid": "^5.1.6",
     "next": "16.1.6",
     "pg": "^8.18.0",
