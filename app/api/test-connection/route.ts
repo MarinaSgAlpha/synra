@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Client as PgClient } from 'pg'
 import mysql from 'mysql2/promise'
+import sql from 'mssql'
 
 const MAX_TEST_QUERIES = 10
 
@@ -232,6 +233,76 @@ export async function POST(request: NextRequest) {
         if (conn) {
           try {
             await conn.end()
+          } catch {
+            // Ignore close errors
+          }
+        }
+      }
+    }
+
+    // ── MS SQL Server test connection ──────────────────────────────
+    if (serviceSlug === 'mssql') {
+      const host = decryptedConfig.host
+      const port = decryptedConfig.port || '1433'
+      const database = decryptedConfig.database
+      const user = decryptedConfig.user
+      const password = decryptedConfig.password
+      const useEncrypt = decryptedConfig.ssl === 'true' || decryptedConfig.ssl === '1'
+
+      if (!host || !database || !user || !password) {
+        return NextResponse.json({ error: 'Incomplete MS SQL Server credentials' }, { status: 400 })
+      }
+
+      let pool: sql.ConnectionPool | null = null
+
+      try {
+        pool = await sql.connect({
+          server: host,
+          port: parseInt(port, 10) || 1433,
+          database,
+          user,
+          password,
+          options: {
+            encrypt: useEncrypt,
+            trustServerCertificate: useEncrypt,
+            connectTimeout: 10000,
+          },
+        })
+
+        const result = await pool.request().query(`
+          SELECT TABLE_SCHEMA, TABLE_NAME 
+          FROM INFORMATION_SCHEMA.TABLES 
+          WHERE TABLE_TYPE = 'BASE TABLE'
+          ORDER BY TABLE_SCHEMA, TABLE_NAME
+        `)
+
+        const tables = (result.recordset as any[]).map(
+          (r) => (r.TABLE_SCHEMA !== 'dbo' ? `${r.TABLE_SCHEMA}.${r.TABLE_NAME}` : r.TABLE_NAME)
+        )
+        const tableCount = tables.length
+
+        const claudeMessage = generateClaudeMessage(tables, tableCount)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Connection successful!',
+          sample_data: {
+            table_count: tableCount,
+            sample_tables: tables.slice(0, 5),
+            claude_says: claudeMessage,
+          },
+          remaining_test_queries: remainingQueries,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: 'MS SQL Server connection failed',
+          details: err.message || 'Unable to connect to database',
+        })
+      } finally {
+        if (pool) {
+          try {
+            await pool.close()
           } catch {
             // Ignore close errors
           }

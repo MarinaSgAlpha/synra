@@ -105,7 +105,7 @@ export default function ConnectionsPage() {
     setSelectedService(service)
     // Default SSL to true for PostgreSQL
     const defaultConfig: Record<string, string> = 
-      service.slug === 'postgresql' || service.slug === 'mysql' ? { ssl: 'true' } : {}
+      service.slug === 'postgresql' || service.slug === 'mysql' || service.slug === 'mssql' ? { ssl: 'true' } : {}
     setConfigValues(defaultConfig)
     setError(null)
     setSuccess(null)
@@ -401,6 +401,63 @@ export default function ConnectionsPage() {
           required: false,
           encrypted: false,
           hint: 'Enable for cloud-hosted databases (recommended)',
+        },
+      ]
+    }
+    if (service.slug === 'mssql') {
+      return [
+        {
+          key: 'host',
+          label: 'Host / Server',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'yourserver.database.windows.net',
+          hint: 'Azure SQL, AWS RDS, or your SQL Server host',
+        },
+        {
+          key: 'port',
+          label: 'Port',
+          type: 'text' as const,
+          required: false,
+          encrypted: false,
+          placeholder: '1433',
+          hint: 'Usually 1433 for SQL Server',
+        },
+        {
+          key: 'database',
+          label: 'Database Name',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'mydb',
+          hint: 'The name of the database to connect to',
+        },
+        {
+          key: 'user',
+          label: 'Username',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'sqladmin',
+          hint: 'Your database username',
+        },
+        {
+          key: 'password',
+          label: 'Password',
+          type: 'password' as const,
+          required: true,
+          encrypted: true,
+          placeholder: '',
+          hint: 'Your database password',
+        },
+        {
+          key: 'ssl',
+          label: 'Encrypt connection',
+          type: 'checkbox' as const,
+          required: false,
+          encrypted: false,
+          hint: 'Enable for Azure and cloud (recommended)',
         },
       ]
     }

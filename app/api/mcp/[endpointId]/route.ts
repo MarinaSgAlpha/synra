@@ -12,8 +12,10 @@ import { decrypt } from '@/lib/encryption'
 import { SUPABASE_TOOLS, handleSupabaseTool } from '@/lib/mcp-handlers/supabase'
 import { POSTGRESQL_TOOLS, handlePostgresqlTool } from '@/lib/mcp-handlers/postgresql'
 import { MYSQL_TOOLS, handleMysqlTool } from '@/lib/mcp-handlers/mysql'
+import { MSSQL_TOOLS, handleMssqlTool } from '@/lib/mcp-handlers/mssql'
 import type { PostgresqlConfig } from '@/lib/mcp-handlers/postgresql'
 import type { MysqlConfig } from '@/lib/mcp-handlers/mysql'
+import type { MssqlConfig } from '@/lib/mcp-handlers/mssql'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── JSON-RPC Helpers ───────────────────────────────────────────────
@@ -204,7 +206,9 @@ export async function POST(
           ? POSTGRESQL_TOOLS
           : endpoint.service_slug === 'mysql'
             ? MYSQL_TOOLS
-            : SUPABASE_TOOLS
+            : endpoint.service_slug === 'mssql'
+              ? MSSQL_TOOLS
+              : SUPABASE_TOOLS
 
       // Filter by allowed_tools if set on the endpoint
       if (
@@ -235,7 +239,9 @@ export async function POST(
           ? POSTGRESQL_TOOLS
           : endpoint.service_slug === 'mysql'
             ? MYSQL_TOOLS
-            : SUPABASE_TOOLS
+            : endpoint.service_slug === 'mssql'
+              ? MSSQL_TOOLS
+              : SUPABASE_TOOLS
 
       // Verify tool exists
       const toolExists = availableTools.some((t) => t.name === toolName)
@@ -313,6 +319,26 @@ export async function POST(
         }
 
         result = await handleMysqlTool(toolName, toolArgs, mysqlConfig)
+      } else if (endpoint.service_slug === 'mssql') {
+        const mssqlConfig: MssqlConfig = {
+          host: decryptedConfig.host,
+          port: decryptedConfig.port || '1433',
+          database: decryptedConfig.database,
+          user: decryptedConfig.user,
+          password: decryptedConfig.password,
+          ssl: decryptedConfig.ssl,
+        }
+
+        if (!mssqlConfig.host || !mssqlConfig.database || !mssqlConfig.user || !mssqlConfig.password) {
+          const availableKeys = Object.keys(decryptedConfig).join(', ')
+          return jsonRpcError(
+            id,
+            -32000,
+            `Incomplete MS SQL Server credentials. Found keys: [${availableKeys}]. Need host, database, user, and password.`
+          )
+        }
+
+        result = await handleMssqlTool(toolName, toolArgs, mssqlConfig)
       } else {
         // Supabase (default)
         const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url
