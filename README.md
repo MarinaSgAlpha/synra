@@ -1,80 +1,94 @@
-# Synra - Managed MCP Gateway SaaS
+Synra — Managed MCP Gateway
+Connect Claude and AI agents to your database in 60 seconds.
+Synra is a managed MCP (Model Context Protocol) gateway that gives you one secure HTTPS URL to connect AI assistants like Claude to your PostgreSQL, MySQL, MS SQL Server, or Supabase database — no local setup, no config files, no .env headaches.
+🔗 mcpserver.design — Sign up free, test your connection, subscribe when ready.
 
-This is the main Synra application (separate from the marketing site at mcpserver.design).
+The Problem Synra Solves
+Running a local MCP server means:
 
-## What is Synra?
+JSON config files and .env files on every machine
+Database credentials sitting in plaintext
+No read-only enforcement unless you set it up manually
+No audit trail of what queries were run
+Every team member manages their own local setup
 
-Synra is a managed MCP (Model Context Protocol) gateway that lets developers connect AI assistants like Claude Desktop to their real databases and tools through a single secure URL — no local config files, no .env headaches.
+Synra replaces all of that with one URL.
 
-## Tech Stack
+How It Works
+Your Database (PostgreSQL / MySQL / MS SQL / Supabase)
+        ↓
+  Synra MCP Gateway (mcpserver.design)
+  • AES-256 encrypted credentials
+  • Read-only enforcement
+  • SQL injection protection
+  • Audit logging
+        ↓
+  Claude Desktop / Claude.ai / Any MCP Client
 
-- **Framework:** Next.js 15+ (App Router) with TypeScript
-- **Database:** Supabase (SynraDB)
-- **Auth:** Supabase Auth
-- **Hosting:** TBD (Netlify or Vercel)
-- **Styling:** Tailwind CSS
+Save credentials — add your database connection details in the Synra dashboard. Encrypted with AES-256 on save.
+Get your URL — Synra generates a unique MCP endpoint: https://app.mcpserver.design/api/mcp/{your-token}
+Connect Claude — paste the URL into Claude via Settings → Connectors → Add custom connector
+Ask questions — query your database in plain English. Claude handles the SQL.
 
-## Project Structure
 
-```
-synra-app/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Landing page
-│   ├── login/             # Auth pages
-│   ├── dashboard/         # Protected dashboard
-│   └── api/
-│       └── mcp/           # MCP Gateway API
-├── lib/
-│   ├── supabase/          # Supabase clients
-│   ├── encryption.ts      # AES-256 encryption
-│   └── mcp-handlers/      # MCP tool implementations
-├── types/                 # TypeScript definitions
-├── components/            # React components
-└── middleware.ts          # Auth protection
-```
+Supported Databases
+DatabaseStatusPostgreSQL✅ LiveSupabase✅ LiveMySQL✅ LiveMS SQL Server✅ LiveMore coming🔜
+Works with any hosted PostgreSQL — AWS RDS, Neon, Railway, Render, DigitalOcean, PlanetScale, and self-hosted instances.
 
-## Setup
+MCP Tools Exposed
+When Claude connects via Synra, it gets access to four read-only tools:
+ToolDescriptionlist_tablesReturns all tables and schemas in your databasedescribe_tableReturns columns, types, and constraints for a tablequery_tableRuns a filtered SELECT query on a specific tableexecute_sqlRuns a custom SELECT query
+All four are read-only. INSERT, UPDATE, DELETE, DROP, ALTER, and TRUNCATE are blocked at the gateway level — no configuration required.
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+What You Can Ask Claude
+Once connected, ask Claude things like:
 
-2. **Set up environment variables:**
-   ```bash
-   cp .env.local.example .env.local
-   ```
-   
-   Fill in your Supabase credentials and generate an encryption key:
-   ```bash
-   openssl rand -hex 32
-   ```
+"What tables are in my database?"
+"How many users signed up this week?"
+"Show me all orders with a pending status older than 7 days."
+"What's the average revenue per user by signup cohort?"
+"Which customers haven't made a purchase in 90 days?"
 
-3. **Run development server:**
-   ```bash
-   npm run dev
-   ```
+Claude inspects your schema, writes the SQL, runs it through Synra, and returns the answer. No SQL knowledge needed.
 
-4. **Open:** http://localhost:3000
+Security
 
-## Development Status
+Read-only by default — only SELECT queries allowed, enforced at the gateway
+AES-256 encryption — credentials encrypted at rest, decrypted only at request time
+SQL sanitization — every query scanned for destructive keywords before execution
+Audit logging — full history of every query, tool used, timestamp, and response status
+No result storage — query results are never stored, only metadata is logged
 
-**✅ Task 1 Complete:** Project setup with TypeScript, Supabase, and folder structure
 
-**Next:** Task 2 - Auth system with signup/login and automatic org creation
+Pricing
+PlanPriceConnectionsFree$0Test modeStarter$19/month2 databasesLifetime$69 one-time2 databases + lifetime updates
+Start free at mcpserver.design — no credit card required to test your connection.
 
-## Environment Variables
+Tech Stack
 
-See `.env.local.example` for required environment variables.
+Framework: Next.js 15 (App Router) with TypeScript
+Database: Supabase (multi-tenant, RLS)
+Auth: Supabase Auth
+Hosting: Railway + Netlify
+Encryption: AES-256-GCM
+Styling: Tailwind CSS
 
-## Database Schema
 
-The project uses 12 Supabase tables. See `SYNRA_PROJECT_CONTEXT.md` for full schema documentation.
+Who This Is For
 
-## Security
+Startup founders who want to ask Claude about their business data without writing SQL
+Developers connecting AI agents to production databases securely
+Small teams who want shared database access through a central MCP gateway
+Non-technical users who want conversational analytics without hiring a data analyst
 
-- All credentials encrypted at rest with AES-256-GCM
-- Read-only MCP gateway by default
-- SQL sanitization for all queries
-- Rate limiting per endpoint
-- Complete audit logging
+
+Related
+
+🌐 Marketing site & blog: mcpserver.design
+📖 Setup guides: mcpserver.design/blog
+📧 Support: hello@mcpserver.design
+
+
+About
+Built by Sam H — founder of Synra and AppSkale.
+Synra exists because connecting AI to real business data shouldn't require a DevOps engineer. One URL. Under 60 seconds. Done.
