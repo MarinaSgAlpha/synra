@@ -269,20 +269,30 @@ async function executeSql(pool: sql.ConnectionPool, sqlStr: string): Promise<any
 export async function handleMssqlTool(
   toolName: string,
   args: Record<string, any>,
-  config: MssqlConfig
+  config: MssqlConfig,
+  allowedTables?: string[]
 ): Promise<ToolCallResult> {
   const pool = await sql.connect(createMssqlConfig(config))
+
+  const isTableAllowed = (tableName: string) =>
+    !allowedTables || allowedTables.includes(tableName)
 
   try {
     switch (toolName) {
       case 'list_tables': {
-        const tables = await listTables(pool)
+        let tables = await listTables(pool)
+        if (allowedTables) {
+          tables = tables.filter((t) => allowedTables.includes(t))
+        }
         return { success: true, data: { tables } }
       }
 
       case 'describe_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const columns = await describeTable(pool, args.table_name)
         return { success: true, data: { table: args.table_name, columns } }
@@ -291,6 +301,9 @@ export async function handleMssqlTool(
       case 'query_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const rows = await queryTable(pool, args as QueryParams)
         return {

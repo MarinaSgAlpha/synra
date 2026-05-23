@@ -275,11 +275,23 @@ export async function POST(
         )
       }
 
+      // Parse allowed_tables from config (empty array = no restriction)
+      let allowedTables: string[] | undefined
+      if (decryptedConfig.allowed_tables) {
+        try {
+          const parsed = JSON.parse(decryptedConfig.allowed_tables)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            allowedTables = parsed
+          }
+        } catch {
+          // Ignore malformed allowed_tables — treat as no restriction
+        }
+      }
+
       // Route to the correct handler based on service
       let result
 
       if (endpoint.service_slug === 'postgresql') {
-        // PostgreSQL: extract connection params
         const pgConfig: PostgresqlConfig = {
           host: decryptedConfig.host,
           port: decryptedConfig.port || '5432',
@@ -298,7 +310,7 @@ export async function POST(
           )
         }
 
-        result = await handlePostgresqlTool(toolName, toolArgs, pgConfig)
+        result = await handlePostgresqlTool(toolName, toolArgs, pgConfig, allowedTables)
       } else if (endpoint.service_slug === 'mysql') {
         const mysqlConfig: MysqlConfig = {
           host: decryptedConfig.host,
@@ -318,7 +330,7 @@ export async function POST(
           )
         }
 
-        result = await handleMysqlTool(toolName, toolArgs, mysqlConfig)
+        result = await handleMysqlTool(toolName, toolArgs, mysqlConfig, allowedTables)
       } else if (endpoint.service_slug === 'mssql') {
         const mssqlConfig: MssqlConfig = {
           host: decryptedConfig.host,
@@ -338,7 +350,7 @@ export async function POST(
           )
         }
 
-        result = await handleMssqlTool(toolName, toolArgs, mssqlConfig)
+        result = await handleMssqlTool(toolName, toolArgs, mssqlConfig, allowedTables)
       } else {
         // Supabase (default)
         const supabaseUrl = decryptedConfig.url || decryptedConfig.supabase_url || decryptedConfig.project_url

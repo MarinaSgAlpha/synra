@@ -260,22 +260,32 @@ async function executeSql(client: Client, sql: string): Promise<any> {
 export async function handlePostgresqlTool(
   toolName: string,
   args: Record<string, any>,
-  config: PostgresqlConfig
+  config: PostgresqlConfig,
+  allowedTables?: string[]
 ): Promise<ToolCallResult> {
   const client = createPgClient(config)
+
+  const isTableAllowed = (tableName: string) =>
+    !allowedTables || allowedTables.includes(tableName)
 
   try {
     await client.connect()
 
     switch (toolName) {
       case 'list_tables': {
-        const tables = await listTables(client)
+        let tables = await listTables(client)
+        if (allowedTables) {
+          tables = tables.filter((t) => allowedTables.includes(t))
+        }
         return { success: true, data: { tables } }
       }
 
       case 'describe_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const columns = await describeTable(client, args.table_name)
         return { success: true, data: { table: args.table_name, columns } }
@@ -284,6 +294,9 @@ export async function handlePostgresqlTool(
       case 'query_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const rows = await queryTable(client, args as QueryParams)
         return {
@@ -306,7 +319,6 @@ export async function handlePostgresqlTool(
   } catch (err: any) {
     return { success: false, error: err.message || 'Tool execution failed' }
   } finally {
-    // ALWAYS close the connection — no leaks
     try {
       await client.end()
     } catch {

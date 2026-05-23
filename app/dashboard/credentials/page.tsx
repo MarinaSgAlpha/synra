@@ -39,6 +39,15 @@ export default function ConnectionsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [showPricingModal, setShowPricingModal] = useState(false)
 
+  // Table access state
+  const [tableAccessId, setTableAccessId] = useState<string | null>(null)
+  const [allTables, setAllTables] = useState<string[]>([])
+  const [selectedTables, setSelectedTables] = useState<string[]>([])
+  const [loadingTables, setLoadingTables] = useState(false)
+  const [savingTables, setSavingTables] = useState(false)
+  const [tableAccessError, setTableAccessError] = useState<string | null>(null)
+  const [tableAccessSuccess, setTableAccessSuccess] = useState<string | null>(null)
+
   useEffect(() => {
     loadData()
   }, [])
@@ -264,6 +273,92 @@ export default function ConnectionsPage() {
     } catch (err: any) {
       setError(err.message)
     }
+  }
+
+  const isDatabaseService = (slug: string) =>
+    slug === 'postgresql' || slug === 'mysql' || slug === 'mssql'
+
+  const handleLoadTableAccess = async (credentialId: string) => {
+    setTableAccessId(credentialId)
+    setLoadingTables(true)
+    setTableAccessError(null)
+    setTableAccessSuccess(null)
+    setAllTables([])
+    setSelectedTables([])
+
+    try {
+      const [tablesRes, savedRes] = await Promise.all([
+        fetch('/api/fetch-tables', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credentialId }),
+        }),
+        fetch(`/api/credentials/${credentialId}/tables`),
+      ])
+
+      if (!tablesRes.ok) {
+        const data = await tablesRes.json()
+        throw new Error(data.error || 'Failed to fetch tables')
+      }
+
+      const { tables } = await tablesRes.json()
+      setAllTables(tables)
+
+      if (savedRes.ok) {
+        const { allowed_tables } = await savedRes.json()
+        if (allowed_tables && allowed_tables.length > 0) {
+          setSelectedTables(allowed_tables)
+        } else {
+          setSelectedTables(tables)
+        }
+      } else {
+        setSelectedTables(tables)
+      }
+    } catch (err: any) {
+      setTableAccessError(err.message || 'Failed to load tables')
+    } finally {
+      setLoadingTables(false)
+    }
+  }
+
+  const handleSaveTableAccess = async () => {
+    if (!tableAccessId) return
+    setSavingTables(true)
+    setTableAccessError(null)
+    setTableAccessSuccess(null)
+
+    try {
+      const tablesToSave = selectedTables.length === allTables.length ? [] : selectedTables
+
+      const res = await fetch(`/api/credentials/${tableAccessId}/tables`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowed_tables: tablesToSave }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save table access')
+      }
+
+      setTableAccessSuccess(
+        tablesToSave.length === 0
+          ? 'All tables are accessible (no restrictions).'
+          : `Access restricted to ${tablesToSave.length} table${tablesToSave.length === 1 ? '' : 's'}.`
+      )
+    } catch (err: any) {
+      setTableAccessError(err.message || 'Failed to save')
+    } finally {
+      setSavingTables(false)
+    }
+  }
+
+  const handleToggleTable = (table: string) => {
+    setSelectedTables((prev) =>
+      prev.includes(table)
+        ? prev.filter((t) => t !== table)
+        : [...prev, table]
+    )
   }
 
   const getConfigFields = (service: SupportedService) => {
@@ -839,6 +934,114 @@ export default function ConnectionsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Table Access Control */}
+                {isDatabaseService(conn.service_slug) && (
+                  <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-medium text-white mb-1">Table Access</h4>
+                        <p className="text-xs text-gray-500">Choose which tables the AI can access</p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          tableAccessId === conn.id
+                            ? setTableAccessId(null)
+                            : handleLoadTableAccess(conn.id)
+                        }
+                        disabled={loadingTables && tableAccessId === conn.id}
+                        className="px-4 py-2 bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white text-sm rounded-lg transition-all disabled:opacity-50"
+                      >
+                        {loadingTables && tableAccessId === conn.id
+                          ? 'Loading...'
+                          : tableAccessId === conn.id
+                            ? 'Close'
+                            : 'Manage Tables'}
+                      </button>
+                    </div>
+
+                    {tableAccessId === conn.id && !loadingTables && (
+                      <div className="mt-3">
+                        {tableAccessError && (
+                          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md mb-3">
+                            <p className="text-sm text-red-400">{tableAccessError}</p>
+                          </div>
+                        )}
+
+                        {tableAccessSuccess && (
+                          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md mb-3">
+                            <p className="text-sm text-green-400">{tableAccessSuccess}</p>
+                          </div>
+                        )}
+
+                        {allTables.length > 0 && (
+                          <>
+                            <div className="flex items-center justify-between mb-3">
+                              <p className="text-xs text-gray-400">
+                                {selectedTables.length} of {allTables.length} tables selected
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedTables([...allTables])}
+                                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Select All
+                                </button>
+                                <span className="text-gray-600">·</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedTables([])}
+                                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Deselect All
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="max-h-60 overflow-y-auto border border-[#1c1c1c] rounded-md bg-[#111] p-2 space-y-1">
+                              {allTables.map((table) => (
+                                <label
+                                  key={table}
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#1c1c1c] cursor-pointer transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedTables.includes(table)}
+                                    onChange={() => handleToggleTable(table)}
+                                    className="w-3.5 h-3.5 rounded border-[#333] bg-[#0a0a0a] text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                  />
+                                  <span className="text-sm text-gray-300 font-mono">{table}</span>
+                                </label>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-3">
+                              <p className="text-[11px] text-gray-600">
+                                {selectedTables.length === allTables.length
+                                  ? 'All tables — no restrictions applied'
+                                  : selectedTables.length === 0
+                                    ? 'No tables selected — AI will have no access'
+                                    : `AI can only access ${selectedTables.length} table${selectedTables.length === 1 ? '' : 's'}`}
+                              </p>
+                              <button
+                                onClick={handleSaveTableAccess}
+                                disabled={savingTables}
+                                className="px-4 py-2 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium rounded-md transition-all"
+                              >
+                                {savingTables ? 'Saving...' : 'Save Table Access'}
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {allTables.length === 0 && !tableAccessError && (
+                          <p className="text-xs text-gray-500">No tables found in this database.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}

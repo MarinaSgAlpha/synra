@@ -256,22 +256,32 @@ async function executeSql(conn: mysql.Connection, sql: string): Promise<any> {
 export async function handleMysqlTool(
   toolName: string,
   args: Record<string, any>,
-  config: MysqlConfig
+  config: MysqlConfig,
+  allowedTables?: string[]
 ): Promise<ToolCallResult> {
   const conn = await mysql.createConnection(createMysqlConnection(config))
+
+  const isTableAllowed = (tableName: string) =>
+    !allowedTables || allowedTables.includes(tableName)
 
   try {
     const database = config.database
 
     switch (toolName) {
       case 'list_tables': {
-        const tables = await listTables(conn, database)
+        let tables = await listTables(conn, database)
+        if (allowedTables) {
+          tables = tables.filter((t) => allowedTables.includes(t))
+        }
         return { success: true, data: { tables } }
       }
 
       case 'describe_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const columns = await describeTable(conn, database, args.table_name)
         return { success: true, data: { table: args.table_name, columns } }
@@ -280,6 +290,9 @@ export async function handleMysqlTool(
       case 'query_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return { success: false, error: `Access denied: table '${args.table_name}' is not in the allowed list` }
         }
         const rows = await queryTable(conn, database, args as QueryParams)
         return {
