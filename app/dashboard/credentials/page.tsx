@@ -807,21 +807,21 @@ export default function ConnectionsPage() {
                 className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-white font-medium">{conn.name}</h3>
-                    <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <h3 className="text-white font-medium truncate min-w-0">{conn.name}</h3>
+                    <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] rounded-full border ${
                       conn.is_active
                         ? 'text-green-400 bg-green-500/10 border-green-500/20'
                         : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
                     }`}>
                       {conn.is_active ? 'Active' : 'Inactive'}
                     </span>
-                    <span className="px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full">
+                    <span className="flex-shrink-0 px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full whitespace-nowrap">
                       {conn.service_slug}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleEdit(conn)}
                       className="px-3 py-1 text-xs text-gray-400 hover:text-white bg-[#0a0a0a] hover:bg-[#1c1c1c] border border-[#1c1c1c] rounded transition-all"
@@ -893,7 +893,7 @@ export default function ConnectionsPage() {
                     <button
                       onClick={() => handleTestConnection(conn.id)}
                       disabled={testingId === conn.id}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-shrink-0 min-w-[150px] px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {testingId === conn.id ? 'Testing...' : 'Test Connection'}
                     </button>
@@ -967,7 +967,7 @@ export default function ConnectionsPage() {
                             : handleLoadTableAccess(conn.id)
                         }
                         disabled={loadingTables && tableAccessId === conn.id}
-                        className="px-4 py-2 bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white text-sm rounded-lg transition-all disabled:opacity-50"
+                        className="flex-shrink-0 min-w-[150px] px-4 py-2 bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white text-sm rounded-lg transition-all disabled:opacity-50"
                       >
                         {loadingTables && tableAccessId === conn.id
                           ? 'Loading...'
