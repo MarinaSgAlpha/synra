@@ -20,8 +20,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [billingLoading, setBillingLoading] = useState<string | null>(null)
-  const [billingError, setBillingError] = useState<string | null>(null)
 
   useEffect(() => {
     if (organization) {
@@ -64,50 +62,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleUpgrade = async (plan: 'starter' | 'lifetime') => {
-    setBillingLoading(plan)
-    setBillingError(null)
-    try {
-      const res = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
-      })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error(data.error || 'Failed to start checkout')
-      }
-    } catch (err: any) {
-      setBillingError(err.message || 'Failed to start checkout')
-      setBillingLoading(null)
-    }
-  }
-
-  const handleManageBilling = async () => {
-    setBillingLoading('portal')
-    setBillingError(null)
-    try {
-      const res = await fetch('/api/stripe/create-portal-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error(data.error || 'Failed to open billing portal')
-      }
-    } catch (err: any) {
-      setBillingError(err.message || 'Failed to open billing portal')
-      setBillingLoading(null)
-    }
-  }
-
   const currentPlan = (organization?.plan || 'free').toLowerCase()
-  const isFree = currentPlan === 'free'
-  const isLifetime = currentPlan === 'lifetime'
 
   const hasChanges =
     orgName !== (organization?.name || '') ||
@@ -207,9 +162,9 @@ export default function SettingsPage() {
             <span className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-md text-sm text-blue-400 font-medium">
               {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
             </span>
-            {isLifetime && (
-              <span className="text-xs text-green-400">Lifetime access — pay once, use forever</span>
-            )}
+            <a href="/dashboard/billing" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              Manage in Billing →
+            </a>
           </div>
         </div>
 
@@ -231,88 +186,6 @@ export default function SettingsPage() {
             <span className="text-sm text-red-400">{error}</span>
           )}
         </div>
-      </div>
-
-      {/* Billing & Plan */}
-      <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mt-6">
-        <h2 className="text-lg font-semibold text-white mb-1">Billing & Plan</h2>
-        <p className="text-sm text-gray-400 mb-5">
-          {isFree
-            ? 'Upgrade to unlock more connections and higher limits.'
-            : 'Manage your subscription and billing details.'}
-        </p>
-
-        {billingError && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md">
-            <p className="text-sm text-red-400">{billingError}</p>
-          </div>
-        )}
-
-        {isFree ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Starter */}
-            <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-5 flex flex-col">
-              <h3 className="text-white font-semibold mb-1">Starter</h3>
-              <div className="flex items-baseline gap-1 mb-3">
-                <span className="text-2xl font-bold text-white">$19</span>
-                <span className="text-sm text-gray-400">/month</span>
-              </div>
-              <ul className="text-xs text-gray-400 space-y-1.5 mb-5 flex-grow">
-                <li>2 database connections</li>
-                <li>10,000 requests/day</li>
-                <li>PostgreSQL, MySQL, MS SQL & Supabase</li>
-                <li>Email support</li>
-              </ul>
-              <button
-                onClick={() => handleUpgrade('starter')}
-                disabled={billingLoading !== null}
-                className="w-full px-4 py-2.5 text-sm border-2 border-blue-500 hover:border-blue-400 bg-transparent text-blue-400 hover:text-blue-300 font-medium rounded-md transition-all disabled:opacity-50"
-              >
-                {billingLoading === 'starter' ? 'Redirecting...' : 'Choose Starter'}
-              </button>
-            </div>
-
-            {/* Lifetime */}
-            <div className="bg-[#0a0a0a] border-2 border-blue-500/50 rounded-lg p-5 flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
-                BEST VALUE
-              </div>
-              <h3 className="text-white font-semibold mb-1">Lifetime Access</h3>
-              <div className="flex items-baseline gap-1 mb-3">
-                <span className="text-2xl font-bold text-white">$69</span>
-                <span className="text-sm text-gray-400">one-time</span>
-              </div>
-              <ul className="text-xs text-gray-400 space-y-1.5 mb-5 flex-grow">
-                <li>2 database connections</li>
-                <li>10,000 requests/day</li>
-                <li>PostgreSQL, MySQL, MS SQL & Supabase</li>
-                <li className="text-blue-400">Lifetime updates — pay once</li>
-              </ul>
-              <button
-                onClick={() => handleUpgrade('lifetime')}
-                disabled={billingLoading !== null}
-                className="w-full px-4 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-md transition-all disabled:opacity-50"
-              >
-                {billingLoading === 'lifetime' ? 'Redirecting...' : 'Get Lifetime Access'}
-              </button>
-            </div>
-          </div>
-        ) : isLifetime ? (
-          <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-5">
-            <p className="text-sm text-gray-300">
-              You have <span className="text-blue-400 font-medium">Lifetime Access</span>. There are no recurring charges. For receipts or questions, email{' '}
-              <a href="mailto:hello@mcpserver.design" className="text-blue-400 hover:text-blue-300">hello@mcpserver.design</a>.
-            </p>
-          </div>
-        ) : (
-          <button
-            onClick={handleManageBilling}
-            disabled={billingLoading !== null}
-            className="px-5 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all disabled:opacity-50"
-          >
-            {billingLoading === 'portal' ? 'Opening...' : 'Manage Billing'}
-          </button>
-        )}
       </div>
     </div>
   )
