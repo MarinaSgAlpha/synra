@@ -22,6 +22,19 @@ export const metadata: Metadata = {
   icons: {
     icon: "/synraico.ico",
   },
+  // app.mcpserver.design is the product app, not marketing content.
+  // Keep it out of search indexes so it doesn't compete with the
+  // marketing site for brand queries and doesn't burn crawl budget.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export default function RootLayout({
