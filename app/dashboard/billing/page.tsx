@@ -2,6 +2,7 @@
 
 import { useDashboard } from '@/contexts/DashboardContext'
 import { useState } from 'react'
+import { trackEvent } from '@/lib/mixpanel'
 
 export default function BillingPage() {
   const { organization } = useDashboard()
@@ -15,6 +16,7 @@ export default function BillingPage() {
   const handleUpgrade = async (plan: 'starter' | 'lifetime') => {
     setBillingLoading(plan)
     setBillingError(null)
+    trackEvent('upgrade_clicked', { plan, current_plan: currentPlan, source: 'billing' })
     try {
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
@@ -36,6 +38,7 @@ export default function BillingPage() {
   const handleManageBilling = async () => {
     setBillingLoading('portal')
     setBillingError(null)
+    trackEvent('billing_portal_opened', { current_plan: currentPlan })
     try {
       const res = await fetch('/api/stripe/create-portal-session', {
         method: 'POST',

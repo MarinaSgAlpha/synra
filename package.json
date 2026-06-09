@@ -8,10 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.102.0",
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "dotenv": "^17.2.4",
+    "mixpanel-browser": "^2.80.0",
     "mssql": "^12.2.0",
     "mysql2": "^3.18.0",
     "nanoid": "^5.1.6",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mixpanel-browser": "^2.60.0",
     "@types/mssql": "^9.1.9",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",

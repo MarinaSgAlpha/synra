@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useDashboard } from '@/contexts/DashboardContext'
 import Link from 'next/link'
+import { trackEvent } from '@/lib/mixpanel'
+import { SupportChat } from '@/components/SupportChat'
 
 declare global {
   interface Window {
@@ -12,6 +15,7 @@ declare global {
 
 export default function DashboardPage() {
   const { user, organization } = useDashboard()
+  const searchParams = useSearchParams()
   const [connectionCount, setConnectionCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -20,6 +24,17 @@ export default function DashboardPage() {
       .then((data) => setConnectionCount(data.credentials?.length ?? 0))
       .catch(() => setConnectionCount(0))
   }, [])
+
+  // Fire upgrade_completed when Stripe redirects back with ?upgrade=success
+  useEffect(() => {
+    if (!organization) return
+    if (searchParams.get('upgrade') === 'success') {
+      trackEvent('upgrade_completed', {
+        plan: organization.plan,
+        organization_id: organization.id,
+      })
+    }
+  }, [searchParams, organization])
 
   // Track SignUp event when dashboard loads
   useEffect(() => {
@@ -141,6 +156,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <SupportChat />
     </div>
   )
 }

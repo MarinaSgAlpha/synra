@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useDashboard } from '@/contexts/DashboardContext'
 import type { SupportedService } from '@/types'
+import { trackEvent } from '@/lib/mixpanel'
+import { SupportChat } from '@/components/SupportChat'
 
 interface ConnectionItem {
   id: string
@@ -193,7 +195,13 @@ export default function ConnectionsPage() {
 
         const fullUrl = `${window.location.origin}${endpoint.endpoint_url}`
         setSuccess(`Connection created! Your MCP endpoint: ${fullUrl}`)
-        
+
+        trackEvent('connection_added', {
+          service_slug: selectedService.slug,
+          connection_count: connections.length + 1,
+          is_first: connections.length === 0,
+        })
+
         // Track Lead event (first connection created)
         if (typeof window !== 'undefined' && (window as any).rdt && connections.length === 0) {
           (window as any).rdt('track', 'Lead', {
@@ -267,9 +275,14 @@ export default function ConnectionsPage() {
         return
       }
 
+      const deletedService = connections.find((c) => c.id === id)?.service_slug
       setConnections((prev) => prev.filter((c) => c.id !== id))
       setSuccess('Connection deleted successfully')
       setDeleteConfirmId(null)
+      trackEvent('connection_deleted', {
+        service_slug: deletedService,
+        remaining_count: connections.length - 1,
+      })
     } catch (err: any) {
       setError(err.message)
     }
@@ -840,6 +853,10 @@ export default function ConnectionsPage() {
                             navigator.clipboard.writeText(fullEndpointUrl)
                             setCopiedId(conn.id)
                             setTimeout(() => setCopiedId(null), 2000)
+                            trackEvent('gateway_url_copied', {
+                              credential_id: conn.id,
+                              service_slug: conn.service_slug,
+                            })
                           }}
                           className="px-3 py-1 text-xs bg-[#1c1c1c] hover:bg-[#252525] text-gray-300 hover:text-white rounded transition-all flex-shrink-0"
                         >
@@ -1154,6 +1171,7 @@ export default function ConnectionsPage() {
 
                 <button
                   onClick={async () => {
+                    trackEvent('upgrade_clicked', { plan: 'starter', source: 'limit_modal' })
                     try {
                       const res = await fetch('/api/stripe/create-checkout-session', {
                         method: 'POST',
@@ -1230,6 +1248,7 @@ export default function ConnectionsPage() {
 
                 <button
                   onClick={async () => {
+                    trackEvent('upgrade_clicked', { plan: 'lifetime', source: 'limit_modal' })
                     try {
                       const res = await fetch('/api/stripe/create-checkout-session', {
                         method: 'POST',
@@ -1261,6 +1280,8 @@ export default function ConnectionsPage() {
           </div>
         </div>
       )}
+
+      <SupportChat />
     </div>
   )
 }

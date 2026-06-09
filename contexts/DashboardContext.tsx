@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { User, Organization } from '@/types'
+import { resetUser } from '@/lib/mixpanel'
 
 interface DashboardContextType {
   user: User | null
@@ -68,6 +69,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    resetUser()
     await supabase.auth.signOut()
     router.push('/login')
   }

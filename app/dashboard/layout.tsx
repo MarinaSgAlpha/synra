@@ -2,6 +2,7 @@
 
 import { DashboardProvider, useDashboard } from '@/contexts/DashboardContext'
 import { Sidebar } from '@/components/Sidebar'
+import { MixpanelProvider } from '@/components/MixpanelProvider'
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { loading } = useDashboard()
@@ -36,7 +37,9 @@ export default function DashboardLayout({
 }) {
   return (
     <DashboardProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <MixpanelProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </MixpanelProvider>
     </DashboardProvider>
   )
 }
