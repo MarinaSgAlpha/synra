@@ -589,7 +589,7 @@ export default function ConnectionsPage() {
 
   return (
     <div className="max-w-5xl">
-      <div className="flex items-start justify-between gap-4 mb-8 px-5 border border-transparent">
+      <div className="flex items-start justify-between gap-4 mb-8 pl-[21px] pr-[38px]">
         <div>
           <h1 className="text-2xl font-bold text-white">Connections</h1>
           <p className="text-sm text-gray-400 mt-1">
