@@ -807,19 +807,26 @@ export default function ConnectionsPage() {
                 className="bg-[#111] border border-[#1c1c1c] rounded-lg p-5"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <h3 className="text-white font-medium truncate min-w-0">{conn.name}</h3>
-                    <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] rounded-full border ${
-                      conn.is_active
-                        ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                        : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
-                    }`}>
-                      {conn.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    <span className="flex-shrink-0 px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full whitespace-nowrap">
-                      {conn.service_slug}
-                    </span>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="min-w-0 flex-1">
+                    <h3
+                      className="text-white font-medium truncate"
+                      title={conn.name}
+                    >
+                      {conn.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
+                        conn.is_active
+                          ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                          : 'text-gray-400 bg-gray-500/10 border-gray-500/20'
+                      }`}>
+                        {conn.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] text-gray-500 bg-[#0a0a0a] border border-[#1c1c1c] rounded-full whitespace-nowrap">
+                        {conn.service_slug}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
@@ -885,8 +892,8 @@ export default function ConnectionsPage() {
 
                 {/* Test Connection Section */}
                 <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="min-w-0 flex-1">
                       <h4 className="text-sm font-medium text-white mb-1">Test Connection</h4>
                       <p className="text-xs text-gray-500">Verify your database connection is working</p>
                     </div>
@@ -955,8 +962,8 @@ export default function ConnectionsPage() {
                 {/* Table Access Control */}
                 {isDatabaseService(conn.service_slug) && (
                   <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-medium text-white mb-1">Table Access</h4>
                         <p className="text-xs text-gray-500">Choose which tables the AI can access</p>
                       </div>
