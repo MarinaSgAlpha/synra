@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useDashboard } from '@/contexts/DashboardContext'
 import type { SupportedService } from '@/types'
 import { trackEvent } from '@/lib/mixpanel'
-import { SupportChat } from '@/components/SupportChat'
+import { SupportChat, openAgent } from '@/components/SupportChat'
 
 interface ConnectionItem {
   id: string
@@ -121,6 +121,7 @@ export default function ConnectionsPage() {
     setError(null)
     setSuccess(null)
     setEditingId(null)
+    openAgent(`How do I connect my ${service.name} database to Synra?`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -601,6 +602,7 @@ export default function ConnectionsPage() {
               setShowForm(true)
               setError(null)
               setSuccess(null)
+              openAgent('How do I add a new database connection?')
             }}
             className="flex-shrink-0 px-4 py-2 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all"
           >
@@ -1079,7 +1081,10 @@ export default function ConnectionsPage() {
               Add your first connection to start using AI with your data.
             </p>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setShowForm(true)
+                openAgent('How do I add a new database connection?')
+              }}
               className="px-5 py-2.5 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-md transition-all"
             >
               Add Connection

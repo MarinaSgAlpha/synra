@@ -5,6 +5,19 @@ import { trackEvent } from '@/lib/mixpanel'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
+const OPEN_AGENT_EVENT = 'synra:open-agent'
+
+/**
+ * Opens the Synra Agent from anywhere in the app. Optionally pre-fills the
+ * input with a contextual prompt so the user just hits send.
+ */
+export function openAgent(prefill?: string) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent(OPEN_AGENT_EVENT, { detail: { prefill } })
+  )
+}
+
 const SUGGESTIONS = [
   'How do I connect my Postgres?',
   'Set up Claude Desktop',
@@ -147,6 +160,18 @@ export function SupportChat() {
       openedTracked.current = true
     }
   }, [isOpen])
+
+  useEffect(() => {
+    const handleOpen = (e: Event) => {
+      setIsOpen(true)
+      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill
+      if (prefill) {
+        setInput((current) => (current.trim() ? current : prefill))
+      }
+    }
+    window.addEventListener(OPEN_AGENT_EVENT, handleOpen)
+    return () => window.removeEventListener(OPEN_AGENT_EVENT, handleOpen)
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
