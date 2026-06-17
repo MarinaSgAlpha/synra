@@ -104,7 +104,7 @@ export interface Subscription {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
-  plan: 'free' | 'starter' | 'pro' | 'team';
+  plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime';
   seats: number;
   current_period_start: string | null;
   current_period_end: string | null;

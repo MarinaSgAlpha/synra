@@ -114,7 +114,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
   // Lifetime is a one-time payment (mode: 'payment'), subscriptions have subscription IDs
   if (plan === 'lifetime') {
     // One-time payment for lifetime access
-    await admin
+    const { error: subError } = await admin
       .from('subscriptions')
       .update({
         stripe_customer_id: customerId,
@@ -125,10 +125,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
       })
       .eq('organization_id', organizationId)
 
-    await admin
+    if (subError) {
+      throw new Error(
+        `Failed to update subscriptions to lifetime for org ${organizationId}: ${subError.message}`
+      )
+    }
+
+    const { error: orgError } = await admin
       .from('organizations')
       .update({ plan: 'lifetime', updated_at: new Date().toISOString() })
       .eq('id', organizationId)
+
+    if (orgError) {
+      throw new Error(
+        `Failed to update organizations to lifetime for org ${organizationId}: ${orgError.message}`
+      )
+    }
 
     console.log(`✅ Lifetime plan activated for org ${organizationId}`)
     
@@ -145,7 +157,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
     // Recurring subscription (starter, pro, team)
     const subscriptionId = session.subscription as string
 
-    await admin
+    const { error: subError } = await admin
       .from('subscriptions')
       .update({
         stripe_customer_id: customerId,
@@ -156,10 +168,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
       })
       .eq('organization_id', organizationId)
 
-    await admin
+    if (subError) {
+      throw new Error(
+        `Failed to update subscriptions to ${plan} for org ${organizationId}: ${subError.message}`
+      )
+    }
+
+    const { error: orgError } = await admin
       .from('organizations')
       .update({ plan, updated_at: new Date().toISOString() })
       .eq('id', organizationId)
+
+    if (orgError) {
+      throw new Error(
+        `Failed to update organizations to ${plan} for org ${organizationId}: ${orgError.message}`
+      )
+    }
 
     console.log(`✅ Subscription activated for org ${organizationId}: ${plan}`)
     
