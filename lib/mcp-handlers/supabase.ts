@@ -344,18 +344,31 @@ export async function handleSupabaseTool(
   toolName: string,
   args: Record<string, any>,
   supabaseUrl: string,
-  apiKey: string
+  apiKey: string,
+  allowedTables?: string[]
 ): Promise<ToolCallResult> {
+  const isTableAllowed = (tableName: string) =>
+    !allowedTables || allowedTables.includes(tableName)
+
   try {
     switch (toolName) {
       case 'list_tables': {
-        const tables = await listTables(supabaseUrl, apiKey)
+        let tables = await listTables(supabaseUrl, apiKey)
+        if (allowedTables) {
+          tables = tables.filter((t) => allowedTables.includes(t))
+        }
         return { success: true, data: { tables } }
       }
 
       case 'describe_table': {
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
+        }
+        if (!isTableAllowed(args.table_name)) {
+          return {
+            success: false,
+            error: `Access denied: table '${args.table_name}' is not in the allowed list`,
+          }
         }
         const columns = await describeTable(supabaseUrl, apiKey, args.table_name)
         return { success: true, data: { table: args.table_name, columns } }
@@ -365,6 +378,12 @@ export async function handleSupabaseTool(
         if (!args.table_name) {
           return { success: false, error: 'table_name is required' }
         }
+        if (!isTableAllowed(args.table_name)) {
+          return {
+            success: false,
+            error: `Access denied: table '${args.table_name}' is not in the allowed list`,
+          }
+        }
         const rows = await queryTable(supabaseUrl, apiKey, args as QueryParams)
         return {
           success: true,
@@ -373,6 +392,8 @@ export async function handleSupabaseTool(
       }
 
       case 'execute_sql': {
+        // Intentionally not gated by allowedTables — raw SQL is too hard to
+        // safely parse for table references. Matches the Postgres/MySQL handlers.
         if (!args.sql) {
           return { success: false, error: 'sql is required' }
         }

@@ -371,7 +371,7 @@ export async function POST(
           )
         }
 
-        result = await handleSupabaseTool(toolName, toolArgs, supabaseUrl, apiKey)
+        result = await handleSupabaseTool(toolName, toolArgs, supabaseUrl, apiKey, allowedTables)
       }
 
       const durationMs = Date.now() - startTime

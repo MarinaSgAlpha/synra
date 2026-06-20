@@ -133,6 +133,44 @@ export async function POST(request: NextRequest) {
       } finally {
         try { await pool.close() } catch {}
       }
+    } else if (serviceSlug === 'supabase') {
+      // Supabase exposes its schema via PostgREST's OpenAPI spec at /rest/v1/.
+      // Each key under `definitions` is a table name (plus a few internal helpers
+      // we filter out). This avoids requiring a custom RPC function in the
+      // customer's database.
+      const supabaseUrl =
+        decryptedConfig.url ||
+        decryptedConfig.supabase_url ||
+        decryptedConfig.project_url
+      const apiKey =
+        decryptedConfig.service_role_key ||
+        decryptedConfig.api_key ||
+        decryptedConfig.anon_key ||
+        decryptedConfig.key
+
+      if (!supabaseUrl || !apiKey) {
+        return NextResponse.json({ error: 'Incomplete Supabase credentials' }, { status: 400 })
+      }
+
+      const specRes = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: {
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`,
+          Accept: 'application/openapi+json',
+        },
+      })
+
+      if (!specRes.ok) {
+        return NextResponse.json(
+          { error: `Failed to fetch Supabase schema (HTTP ${specRes.status})` },
+          { status: 502 }
+        )
+      }
+
+      const spec = await specRes.json()
+      tables = Object.keys(spec.definitions || {})
+        .filter((name) => !name.startsWith('rpc/'))
+        .sort()
     } else {
       return NextResponse.json({ error: 'Table access is not supported for this service type' }, { status: 400 })
     }

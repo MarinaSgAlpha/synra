@@ -291,8 +291,15 @@ export default function ConnectionsPage() {
     }
   }
 
-  const isDatabaseService = (slug: string) =>
-    slug === 'postgresql' || slug === 'neon' || slug === 'mysql' || slug === 'mssql'
+  // Every connected service is a database — this gate stays in place only as
+  // a guard for future service types that may not expose listable tables
+  // (e.g. an API-only connector). Add the slug here when shipping such a service.
+  const supportsTableAccess = (slug: string) =>
+    slug === 'postgresql' ||
+    slug === 'neon' ||
+    slug === 'mysql' ||
+    slug === 'mssql' ||
+    slug === 'supabase'
 
   const handleLoadTableAccess = async (credentialId: string) => {
     setTableAccessId(credentialId)
@@ -1029,7 +1036,7 @@ export default function ConnectionsPage() {
                 </div>
 
                 {/* Table Access Control */}
-                {isDatabaseService(conn.service_slug) && (
+                {supportsTableAccess(conn.service_slug) && (
                   <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-4">
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="min-w-0 flex-1">
