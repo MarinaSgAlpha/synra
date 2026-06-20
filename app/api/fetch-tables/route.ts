@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
     const serviceSlug = credential.service_slug
     let tables: string[] = []
 
-    if (serviceSlug === 'postgresql') {
+    // Neon speaks the Postgres wire protocol — route it through the same path.
+    if (serviceSlug === 'postgresql' || serviceSlug === 'neon') {
       const pgClient = new PgClient({
         host: decryptedConfig.host,
         port: parseInt(decryptedConfig.port || '5432', 10),

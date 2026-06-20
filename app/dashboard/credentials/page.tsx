@@ -292,7 +292,7 @@ export default function ConnectionsPage() {
   }
 
   const isDatabaseService = (slug: string) =>
-    slug === 'postgresql' || slug === 'mysql' || slug === 'mssql'
+    slug === 'postgresql' || slug === 'neon' || slug === 'mysql' || slug === 'mssql'
 
   const handleLoadTableAccess = async (credentialId: string) => {
     setTableAccessId(credentialId)
