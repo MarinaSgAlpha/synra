@@ -118,19 +118,12 @@ Check: [Netlify Dashboard](https://app.netlify.com)
 
 ### **B. Test MCP Gateway:**
 1. Copy the unlocked MCP endpoint URL
-2. Add to Claude Desktop config:
-```json
-{
-  "mcpServers": {
-    "synra": {
-      "url": "https://app.mcpserver.design/api/mcp/YOUR_ENDPOINT_ID"
-    }
-  }
-}
-```
-3. Restart Claude
+2. In Claude Desktop: **Customize → Connectors → click "+" → Add custom connector** → paste URL → Add
+3. The connector appears in your conversation toolbar within seconds (no app restart needed)
 4. Ask: "List all tables in my database"
 5. Ask: "Show me the first 5 rows from [table_name]"
+
+> Note: editing `claude_desktop_config.json` with an `mcpServers` block is no longer the recommended path. The Custom Connector UI replaces it.
 
 ### **C. Test Billing:**
 1. Go to Settings → Click "Manage Billing"

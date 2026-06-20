@@ -11,15 +11,15 @@ const MAX_TEST_QUERIES = 10
 
 function generateClaudeMessage(tables: string[], tableCount: number): string {
   if (tableCount === 0) {
-    return "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL."
+    return "Hi! I'm Claude 👋 Your database is connected, but it looks empty right now. Once you create some tables, I'll be able to query them and help you build amazing things. To connect in Claude Desktop: Customize -> Connectors -> Add custom connector -> paste your MCP endpoint URL."
   } else if (tableCount === 1) {
-    return `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+    return `Hey there! 👋 I'm Claude, and I can see your database has 1 table: "${tables[0]}". I'm ready to query your data and run analytics. To connect in Claude Desktop: Customize -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
   } else if (tableCount <= 5) {
     const tableList = tables.slice(0, 3).join(', ')
-    return `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+    return `Hi! I'm Claude 👋 I can see ${tableCount} tables in your database (${tableList}${tableCount > 3 ? ', ...' : ''}). I'm ready to fetch data, run queries, and analyze everything. To connect in Claude Desktop: Customize -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
   } else {
     const sampleTables = tables.slice(0, 3).join(', ')
-    return `Hello! I'm Claude 👋 Your database looks great - I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect in Claude Desktop: Settings -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
+    return `Hello! I'm Claude 👋 Your database looks great - I can see ${tableCount} tables including ${sampleTables}, and more. I'm ready to query across your entire schema, join data, and analyze patterns. To connect in Claude Desktop: Customize -> Connectors -> Add custom connector -> paste your MCP endpoint URL.`
   }
 }
 

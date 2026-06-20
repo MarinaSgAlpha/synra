@@ -38,7 +38,7 @@ Your Database (PostgreSQL / MySQL / MS SQL / Supabase)
 
 1. **Save credentials** — add your database connection details in the Synra dashboard. Encrypted with AES-256 on save.
 2. **Get your URL** — Synra generates a unique MCP endpoint: `https://app.mcpserver.design/api/mcp/{your-token}`
-3. **Connect Claude** — paste the URL into Claude via Settings → Connectors → Add custom connector
+3. **Connect Claude** — paste the URL into Claude via Customize → Connectors → Add custom connector
 4. **Ask questions** — query your database in plain English. Claude handles the SQL.
 
 ---
