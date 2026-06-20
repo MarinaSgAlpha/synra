@@ -200,9 +200,10 @@ export async function POST(
 
     // ── List tools ──────────────────────────────────────────────────
     case 'tools/list': {
-      // Select tool definitions based on service
+      // Select tool definitions based on service.
+      // Neon is a first-class service that uses the PostgreSQL handler under the hood.
       let tools =
-        endpoint.service_slug === 'postgresql'
+        endpoint.service_slug === 'postgresql' || endpoint.service_slug === 'neon'
           ? POSTGRESQL_TOOLS
           : endpoint.service_slug === 'mysql'
             ? MYSQL_TOOLS
@@ -233,9 +234,9 @@ export async function POST(
         return jsonRpcError(id, -32602, 'Invalid params: tool name is required')
       }
 
-      // Select tool definitions based on service
+      // Select tool definitions based on service. Neon -> PostgreSQL handler.
       const availableTools =
-        endpoint.service_slug === 'postgresql'
+        endpoint.service_slug === 'postgresql' || endpoint.service_slug === 'neon'
           ? POSTGRESQL_TOOLS
           : endpoint.service_slug === 'mysql'
             ? MYSQL_TOOLS
@@ -291,7 +292,7 @@ export async function POST(
       // Route to the correct handler based on service
       let result
 
-      if (endpoint.service_slug === 'postgresql') {
+      if (endpoint.service_slug === 'postgresql' || endpoint.service_slug === 'neon') {
         const pgConfig: PostgresqlConfig = {
           host: decryptedConfig.host,
           port: decryptedConfig.port || '5432',
@@ -303,10 +304,11 @@ export async function POST(
 
         if (!pgConfig.host || !pgConfig.database || !pgConfig.user || !pgConfig.password) {
           const availableKeys = Object.keys(decryptedConfig).join(', ')
+          const serviceLabel = endpoint.service_slug === 'neon' ? 'Neon' : 'PostgreSQL'
           return jsonRpcError(
             id,
             -32000,
-            `Incomplete PostgreSQL credentials. Found keys: [${availableKeys}]. Need host, database, user, and password.`
+            `Incomplete ${serviceLabel} credentials. Found keys: [${availableKeys}]. Need host, database, user, and password.`
           )
         }
 

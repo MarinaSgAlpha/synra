@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
     const serviceSlug = credential.service_slug
 
     // ── PostgreSQL test connection ─────────────────────────────────
-    if (serviceSlug === 'postgresql') {
+    // Neon speaks the Postgres wire protocol — route it through the same path.
+    if (serviceSlug === 'postgresql' || serviceSlug === 'neon') {
       const host = decryptedConfig.host
       const port = decryptedConfig.port || '5432'
       const database = decryptedConfig.database

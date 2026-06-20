@@ -115,8 +115,10 @@ export default function ConnectionsPage() {
   const handleSelectService = (service: SupportedService) => {
     setSelectedService(service)
     // Default SSL to true for PostgreSQL
-    const defaultConfig: Record<string, string> = 
-      service.slug === 'postgresql' || service.slug === 'mysql' || service.slug === 'mssql' ? { ssl: 'true' } : {}
+    const defaultConfig: Record<string, string> =
+      service.slug === 'postgresql' || service.slug === 'neon' || service.slug === 'mysql' || service.slug === 'mssql'
+        ? { ssl: 'true' }
+        : {}
     setConfigValues(defaultConfig)
     setError(null)
     setSuccess(null)
@@ -396,6 +398,65 @@ export default function ConnectionsPage() {
           encrypted: true,
           placeholder: '',
           hint: 'Supabase → Settings → API Keys → Secret key → reveal and copy',
+        },
+      ]
+    }
+    if (service.slug === 'neon') {
+      // Neon uses the Postgres handler under the hood. Same fields as
+      // PostgreSQL, but with Neon-specific copy so the form feels native.
+      return [
+        {
+          key: 'host',
+          label: 'Host',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'ep-xxxx-pooler.us-east-2.aws.neon.tech',
+          hint: 'Neon Console → your project → Connection Details → Host (use the pooled endpoint)',
+        },
+        {
+          key: 'port',
+          label: 'Port',
+          type: 'text' as const,
+          required: false,
+          encrypted: false,
+          placeholder: '5432',
+          hint: 'Neon uses 5432',
+        },
+        {
+          key: 'database',
+          label: 'Database Name',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'neondb',
+          hint: 'Default Neon database is "neondb" unless you renamed it',
+        },
+        {
+          key: 'user',
+          label: 'Username',
+          type: 'text' as const,
+          required: true,
+          encrypted: false,
+          placeholder: 'your_neon_role',
+          hint: 'From your Neon connection string (the part before ":")',
+        },
+        {
+          key: 'password',
+          label: 'Password',
+          type: 'password' as const,
+          required: true,
+          encrypted: true,
+          placeholder: '',
+          hint: 'From your Neon connection string (the part between ":" and "@")',
+        },
+        {
+          key: 'ssl',
+          label: 'Require SSL',
+          type: 'checkbox' as const,
+          required: false,
+          encrypted: false,
+          hint: 'Required for Neon — leave checked',
         },
       ]
     }
@@ -764,6 +825,12 @@ export default function ConnectionsPage() {
                   )}
                 </div>
               ))}
+
+              {selectedService.slug === 'neon' && (
+                <p className="text-[11px] text-gray-500 pt-1">
+                  Powered by Synra&apos;s PostgreSQL engine — full Neon compatibility, including branches and scale-to-zero compute.
+                </p>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
