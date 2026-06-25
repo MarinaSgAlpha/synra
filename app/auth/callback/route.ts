@@ -10,8 +10,40 @@ import { createServerClient as createSSRClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Resolve the user-facing public origin (e.g. "https://app.mcpserver.design")
+ * even when Next.js sees the request via a reverse proxy that injects the
+ * internal hostname (Railway uses localhost:8080 internally).
+ *
+ * Precedence:
+ *   1. x-forwarded-host + x-forwarded-proto (set by every modern proxy)
+ *   2. Host header (set by the browser, usually correct on direct hits)
+ *   3. request.url's origin (fallback for unproxied / dev environments)
+ */
+function getPublicOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto')
+  if (forwardedHost) {
+    const proto =
+      forwardedProto ||
+      (forwardedHost.startsWith('localhost') ? 'http' : 'https')
+    return `${proto}://${forwardedHost}`
+  }
+  const host = request.headers.get('host')
+  if (host && !host.startsWith('localhost')) {
+    const proto = forwardedProto || 'https'
+    return `${proto}://${host}`
+  }
+  return new URL(request.url).origin
+}
+
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  // Public origin for browser-bound redirects (must be the URL the user sees).
+  const publicOrigin = getPublicOrigin(request)
+  // Internal origin for same-container fetches (Railway: localhost:8080 — fast,
+  // avoids a wasteful round-trip out to the public internet and back).
+  const internalOrigin = new URL(request.url).origin
   const code = searchParams.get('code')
   const next = searchParams.get('next') || '/dashboard'
   const errorParam = searchParams.get('error')
@@ -19,13 +51,13 @@ export async function GET(request: NextRequest) {
 
   // Provider-side error (e.g. user denied consent).
   if (errorParam) {
-    const url = new URL('/login', origin)
+    const url = new URL('/login', publicOrigin)
     url.searchParams.set('error', errorDescription || errorParam)
     return NextResponse.redirect(url)
   }
 
   if (!code) {
-    const url = new URL('/login', origin)
+    const url = new URL('/login', publicOrigin)
     url.searchParams.set('error', 'Missing authorization code')
     return NextResponse.redirect(url)
   }
@@ -54,7 +86,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error || !data.session) {
-    const url = new URL('/login', origin)
+    const url = new URL('/login', publicOrigin)
     url.searchParams.set(
       'error',
       error?.message || 'Failed to complete sign-in'
@@ -74,7 +106,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const setupRes = await fetch(
-      new URL('/api/auth/setup-user', origin).toString(),
+      new URL('/api/auth/setup-user', internalOrigin).toString(),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,5 +129,5 @@ export async function GET(request: NextRequest) {
     console.error('[auth/callback] setup-user call failed', err)
   }
 
-  return NextResponse.redirect(new URL(next, origin))
+  return NextResponse.redirect(new URL(next, publicOrigin))
 }
