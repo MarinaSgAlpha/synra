@@ -11,7 +11,13 @@ export default function BillingPage() {
 
   const currentPlan = (organization?.plan || 'free').toLowerCase()
   const isFree = currentPlan === 'free'
-  const isLifetime = currentPlan === 'lifetime'
+  // Treat both the Stripe lifetime tier and the AppSumo lifetime tier
+  // as "already on lifetime" for UI purposes — same access, same blocking
+  // of the upgrade flow. They differ only in how billing is handled
+  // (AppSumo customers don't go through the Stripe portal).
+  const isLifetime =
+    currentPlan === 'lifetime' || currentPlan === 'lifetime_appsumo'
+  const isAppsumoLifetime = currentPlan === 'lifetime_appsumo'
 
   const handleUpgrade = async (plan: 'starter' | 'lifetime') => {
     setBillingLoading(plan)
@@ -155,7 +161,11 @@ export default function BillingPage() {
       {isLifetime && (
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6">
           <p className="text-sm text-gray-300">
-            You have <span className="text-blue-400 font-medium">Lifetime Access</span>. There are no recurring charges. For receipts or questions, email{' '}
+            You have <span className="text-blue-400 font-medium">Lifetime Access</span>
+            {isAppsumoLifetime && (
+              <> via your <span className="text-blue-400 font-medium">AppSumo</span> deal</>
+            )}
+            . There are no recurring charges. For receipts or questions, email{' '}
             <a href="mailto:hello@mcpserver.design" className="text-blue-400 hover:text-blue-300">hello@mcpserver.design</a>.
           </p>
         </div>

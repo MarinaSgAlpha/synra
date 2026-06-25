@@ -17,6 +17,14 @@ export const PLAN_LIMITS = {
     daily_requests: 10000,
     features: ['read_only'],
   },
+  // AppSumo lifetime mirrors the Stripe lifetime tier today. Kept as a
+  // distinct plan so refund handling (deactivate webhook) and revenue
+  // attribution stay clean — see lib/appsumo/redeem.ts.
+  lifetime_appsumo: {
+    max_credentials: 2,
+    daily_requests: 10000,
+    features: ['read_only'],
+  },
   pro: {
     max_credentials: -1, // unlimited
     daily_requests: 100000,
