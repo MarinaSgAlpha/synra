@@ -9,6 +9,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard/credentials', request.url))
   }
 
+  // Root URL on the app subdomain has no business serving a landing page —
+  // signed-in users belong on /dashboard, everyone else belongs on the
+  // marketing site. This dodges the legacy "Coming Soon" placeholder
+  // before it ever renders.
+  if (request.nextUrl.pathname === '/') {
+    if (user) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    return NextResponse.redirect('https://mcpserver.design')
+  }
+
   // Protected dashboard routes
   if (request.nextUrl.pathname.startsWith('/dashboard')) {
     if (!user) {
