@@ -71,7 +71,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     resetUser()
     await supabase.auth.signOut()
-    router.push('/login')
+    // Send the user to the marketing home page on logout — same behavior
+    // as visiting app.mcpserver.design while signed out. Using a full
+    // navigation (not router.push) because the destination is on a
+    // different origin.
+    window.location.href = 'https://mcpserver.design'
   }
 
   return (
