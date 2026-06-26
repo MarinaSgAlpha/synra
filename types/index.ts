@@ -5,7 +5,7 @@ export interface Organization {
   name: string;
   slug: string;
   logo_url: string | null;
-  plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo';
+  plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo' | 'annual_appsumo';
   company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
   use_case: string | null; // What user wants to connect: sql, github, etc.
   created_at: string;
@@ -103,8 +103,8 @@ export interface Subscription {
   organization_id: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
-  status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
-  plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo';
+  status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'expired';
+  plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo' | 'annual_appsumo';
   seats: number;
   current_period_start: string | null;
   current_period_end: string | null;

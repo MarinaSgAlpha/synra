@@ -21,7 +21,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAppsumoConfig } from '@/lib/appsumo/config'
-import { deactivateLicense } from '@/lib/appsumo/redeem'
+import { deactivateLicense, extendAnnualPeriod } from '@/lib/appsumo/redeem'
 import {
   APPSUMO_SIGNATURE_HEADER,
   APPSUMO_TIMESTAMP_HEADER,
@@ -122,19 +122,38 @@ export async function POST(request: NextRequest) {
     body.event_timestamp ?? Date.now(),
   ].join(':')
 
-  await admin
+  // Short-circuit if we've already fully processed this exact event.
+  // The `activate` handler is the dangerous one — it extends the
+  // subscription period by a year, so an accidental double-fire would
+  // silently grant a free renewal. Bail before we mutate anything.
+  const { data: prior } = await admin
     .from('webhook_events')
-    .insert({
-      source: 'appsumo',
-      event_type: event,
-      event_id: eventId,
-      payload: body as unknown as Record<string, unknown>,
-      processed: false,
-    })
-    // Duplicate event_id (retry of a previously-logged event) — fine,
-    // continue processing for at-least-once semantics on the side
-    // effects (which are themselves idempotent).
-    .then(() => {})
+    .select('id, processed')
+    .eq('event_id', eventId)
+    .maybeSingle()
+
+  if (prior?.processed) {
+    console.log(
+      `[appsumo/webhook] event ${eventId} already processed — replying 200 without re-running`
+    )
+    return successResponse(event, 'already processed')
+  }
+
+  if (!prior) {
+    // First time we've seen this event_id — insert a tracking row.
+    // Ignore unique-constraint races (another worker beat us to it);
+    // the processed-check above is what gates side effects.
+    await admin
+      .from('webhook_events')
+      .insert({
+        source: 'appsumo',
+        event_type: event,
+        event_id: eventId,
+        payload: body as unknown as Record<string, unknown>,
+        processed: false,
+      })
+      .then(() => {})
+  }
 
   // Test events: log, respond OK, don't mutate anything.
   if (isTest) {
@@ -214,9 +233,25 @@ async function handlePurchase(admin: SupabaseClient, body: AppsumoWebhookBody) {
 }
 
 /**
- * Activate: AppSumo confirms the user has clicked "Activate". Most of
- * the actual work happens in /api/appsumo/redeem (OAuth flow), so here
- * we just stamp the row as activated if it isn't already.
+ * Activate: fires both on the first-time activation (right after the
+ * user completes OAuth on /appsumo/redeem) AND on annual renewals
+ * (AppSumo re-fires `activate` against the same license_key when the
+ * customer pays for another year).
+ *
+ * Renewal scenario (license already linked to an org AND already
+ * 'activated'): we extend the org's subscription `current_period_end`
+ * by 1 year from its existing end via lib/appsumo/redeem :: extendAnnualPeriod.
+ * That function is itself a no-op for `lifetime_appsumo` grandfathered
+ * subs, so the call is always safe.
+ *
+ * First-time scenario: just stamp the row 'activated'. The OAuth flow
+ * does the subscription / org write — we don't duplicate that work
+ * here because the webhook doesn't know which Synra org the license
+ * belongs to until OAuth happens.
+ *
+ * Idempotency against double-fires is provided one level up by the
+ * event_id processed-check in POST(). Receiving the same event twice
+ * therefore can't double-extend the period.
  *
  * Note: license_status will be "inactive" in the payload — that's
  * normal. AppSumo only flips it active on their side after our 200.
@@ -224,7 +259,7 @@ async function handlePurchase(admin: SupabaseClient, body: AppsumoWebhookBody) {
 async function handleActivate(admin: SupabaseClient, body: AppsumoWebhookBody) {
   const { data: existing } = await admin
     .from('appsumo_codes')
-    .select('id, status, organization_id')
+    .select('id, status, organization_id, activated_at')
     .eq('license_key', body.license_key)
     .maybeSingle()
 
@@ -232,6 +267,9 @@ async function handleActivate(admin: SupabaseClient, body: AppsumoWebhookBody) {
   // because a stale webhook arrived.
   const nextStatus =
     existing?.status === 'deactivated' ? 'deactivated' : 'activated'
+
+  const wasAlreadyActivated =
+    existing?.status === 'activated' && !!existing.activated_at
 
   const { error } = await admin.from('appsumo_codes').upsert(
     {
@@ -241,16 +279,33 @@ async function handleActivate(admin: SupabaseClient, body: AppsumoWebhookBody) {
       tier: body.tier ?? null,
       unit_quantity: body.unit_quantity ?? null,
       status: nextStatus,
-      activated_at:
-        existing?.status === 'activated'
-          ? undefined
-          : new Date().toISOString(),
+      activated_at: wasAlreadyActivated ? undefined : new Date().toISOString(),
       last_event: 'activate',
       last_payload: body as unknown as Record<string, unknown>,
     },
     { onConflict: 'license_key' }
   )
   if (error) throw new Error(`activate upsert failed: ${error.message}`)
+
+  // Renewal detection: if the code was already linked + already
+  // activated before this event, treat this `activate` as a paid-
+  // renewal signal from AppSumo and extend the annual period.
+  if (
+    wasAlreadyActivated &&
+    existing?.organization_id &&
+    nextStatus !== 'deactivated'
+  ) {
+    const result = await extendAnnualPeriod(admin, existing.organization_id)
+    if (result.extended) {
+      console.log(
+        `[appsumo/webhook] renewal extended license=${body.license_key} org=${existing.organization_id} new_period_end=${result.newPeriodEnd} reactivated=${result.reactivated}`
+      )
+    } else {
+      console.log(
+        `[appsumo/webhook] activate received on already-linked license=${body.license_key} org=${existing.organization_id} but extend was a no-op (${result.reason})`
+      )
+    }
+  }
 }
 
 /**

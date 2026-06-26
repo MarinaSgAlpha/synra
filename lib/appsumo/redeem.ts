@@ -13,7 +13,32 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const APPSUMO_PLAN = 'lifetime_appsumo' as const
+/**
+ * Default plan we assign on a fresh AppSumo redemption. The earlier
+ * lifetime deal used 'lifetime_appsumo'; the current AppSumo SKU is
+ * annual, so new redemptions land here. The lifetime constant is kept
+ * exported so older callers / scripts can still reference it.
+ */
+export const APPSUMO_PLAN = 'annual_appsumo' as const
+export const APPSUMO_LIFETIME_PLAN = 'lifetime_appsumo' as const
+
+/**
+ * Number of days an AppSumo annual subscription is valid for after a
+ * successful redemption / renewal event.
+ */
+export const APPSUMO_ANNUAL_PERIOD_DAYS = 365
+
+/**
+ * Plans that the AppSumo flow legitimately leaves on an organization.
+ * Used by the cron to scope sweeps to AppSumo-owned subscriptions.
+ */
+export const APPSUMO_PLANS = [APPSUMO_PLAN, APPSUMO_LIFETIME_PLAN] as const
+
+function addDaysIso(base: Date, days: number): string {
+  const next = new Date(base)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next.toISOString()
+}
 
 export type LinkLicenseResult =
   | { ok: true; organizationId: string; alreadyLinkedToSameOrg?: boolean }
@@ -104,9 +129,12 @@ export async function linkLicenseToOrganization(
     )
   }
 
-  // Flip the org + subscription to AppSumo lifetime. Per the product
-  // spec: stripe_* fields stay null (AppSumo is NOT a Stripe customer)
-  // and current_period_* stay null (lifetime never expires).
+  // Flip the org + subscription to AppSumo annual. Per the product
+  // spec: stripe_* fields stay null (AppSumo is NOT a Stripe customer);
+  // current_period_start = now, current_period_end = +1 year. The
+  // daily cron at /api/cron/appsumo-expiry sweeps expired rows back
+  // to free.
+  const periodEndIso = addDaysIso(new Date(nowIso), APPSUMO_ANNUAL_PERIOD_DAYS)
   const { error: subError } = await admin
     .from('subscriptions')
     .update({
@@ -114,8 +142,8 @@ export async function linkLicenseToOrganization(
       stripe_subscription_id: null,
       status: 'active',
       plan: APPSUMO_PLAN,
-      current_period_start: null,
-      current_period_end: null,
+      current_period_start: nowIso,
+      current_period_end: periodEndIso,
       cancel_at_period_end: false,
       updated_at: nowIso,
     })
@@ -139,6 +167,95 @@ export async function linkLicenseToOrganization(
   }
 
   return { ok: true, organizationId }
+}
+
+/**
+ * Extend an AppSumo annual subscription by one year from its existing
+ * `current_period_end` (not from now). Called when the webhook receives
+ * an `activate` event for a license_key that's already linked + already
+ * activated — we interpret that as AppSumo signalling a renewal.
+ *
+ * - If the current_period_end is in the future, we extend from that
+ *   point so users renewing early aren't penalized for the unused tail
+ *   of their existing year.
+ * - If it's in the past (e.g. they let it lapse, the cron downgraded
+ *   them, and they renewed via AppSumo), we extend from now() and
+ *   reactivate the org's plan to annual_appsumo.
+ *
+ * No-op for non-annual subscriptions — lifetime_appsumo grandfathered
+ * customers never expire and shouldn't have their periods touched.
+ */
+export type ExtendAnnualResult =
+  | { extended: true; newPeriodEnd: string; reactivated: boolean }
+  | { extended: false; reason: 'no_subscription' | 'not_annual' }
+
+export async function extendAnnualPeriod(
+  admin: SupabaseClient,
+  organizationId: string
+): Promise<ExtendAnnualResult> {
+  const { data: sub, error: subError } = await admin
+    .from('subscriptions')
+    .select('id, plan, status, current_period_end')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  if (subError) {
+    throw new Error(
+      `extendAnnualPeriod: subscription lookup failed for org ${organizationId}: ${subError.message}`
+    )
+  }
+  if (!sub) return { extended: false, reason: 'no_subscription' }
+
+  // Only extend AppSumo annual. Lifetime grandfathered customers never
+  // expire — pretend the extend was a no-op and let the activate event
+  // settle on the appsumo_codes row alone.
+  if (sub.plan !== APPSUMO_PLAN) {
+    return { extended: false, reason: 'not_annual' }
+  }
+
+  const now = new Date()
+  const currentEnd = sub.current_period_end
+    ? new Date(sub.current_period_end)
+    : null
+  const startFrom = currentEnd && currentEnd > now ? currentEnd : now
+  const newPeriodEnd = addDaysIso(startFrom, APPSUMO_ANNUAL_PERIOD_DAYS)
+  const wasExpired = sub.status === 'expired'
+
+  const { error: updateError } = await admin
+    .from('subscriptions')
+    .update({
+      plan: APPSUMO_PLAN, // restore plan in case the cron downgraded to free
+      status: 'active',
+      current_period_end: newPeriodEnd,
+      cancel_at_period_end: false,
+      updated_at: now.toISOString(),
+    })
+    .eq('id', sub.id)
+
+  if (updateError) {
+    throw new Error(
+      `extendAnnualPeriod: subscription update failed for org ${organizationId}: ${updateError.message}`
+    )
+  }
+
+  if (wasExpired) {
+    // The cron previously downgraded the org to free — bring it back.
+    const { error: orgError } = await admin
+      .from('organizations')
+      .update({ plan: APPSUMO_PLAN, updated_at: now.toISOString() })
+      .eq('id', organizationId)
+    if (orgError) {
+      throw new Error(
+        `extendAnnualPeriod: org plan restore failed for org ${organizationId}: ${orgError.message}`
+      )
+    }
+  }
+
+  return {
+    extended: true,
+    newPeriodEnd,
+    reactivated: wasExpired,
+  }
 }
 
 /**

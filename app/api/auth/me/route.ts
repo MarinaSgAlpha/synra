@@ -100,7 +100,9 @@ export async function GET() {
 
       const { data: sub } = await admin
         .from('subscriptions')
-        .select('stripe_customer_id, stripe_subscription_id, status, plan')
+        .select(
+          'stripe_customer_id, stripe_subscription_id, status, plan, current_period_start, current_period_end, cancel_at_period_end'
+        )
         .eq('organization_id', membership.organization_id)
         .single()
 

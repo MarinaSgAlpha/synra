@@ -25,6 +25,15 @@ export const PLAN_LIMITS = {
     daily_requests: 10000,
     features: ['read_only'],
   },
+  // AppSumo annual is the current AppSumo tier (replacing the lifetime
+  // deal). Same feature set / limits as the AppSumo lifetime grandfathered
+  // plan; the only difference is the 1-year expiry handled by the daily
+  // cron at /api/cron/appsumo-expiry.
+  annual_appsumo: {
+    max_credentials: 2,
+    daily_requests: 10000,
+    features: ['read_only'],
+  },
   pro: {
     max_credentials: -1, // unlimited
     daily_requests: 100000,
