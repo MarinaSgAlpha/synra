@@ -17,6 +17,14 @@ export const PLAN_LIMITS = {
     daily_requests: 10000,
     features: ['read_only'],
   },
+  // Public Annual SKU billed via Stripe at $149/year. Same access
+  // tier as Starter — the price difference vs Starter is purely the
+  // yearly-vs-monthly cadence, not a feature uplift.
+  annual: {
+    max_credentials: 2,
+    daily_requests: 10000,
+    features: ['read_only'],
+  },
   // AppSumo lifetime mirrors the Stripe lifetime tier today. Kept as a
   // distinct plan so refund handling (deactivate webhook) and revenue
   // attribution stay clean — see lib/appsumo/redeem.ts.

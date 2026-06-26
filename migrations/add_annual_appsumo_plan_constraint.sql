@@ -1,15 +1,21 @@
--- Allow the 'annual_appsumo' plan on subscriptions and organizations.
--- Run this in your Supabase SQL Editor.
+-- Allow the new annual plans ('annual' for Stripe $149/year, and
+-- 'annual_appsumo' for the AppSumo $99/year SKU) on subscriptions
+-- and organizations. Run this in your Supabase SQL Editor.
 --
--- Context: Synra's AppSumo deal converted from lifetime to annual. New
--- AppSumo customers get plan='annual_appsumo' with a 1-year
--- current_period_end. We KEEP 'lifetime_appsumo' in the allowed set so
--- any earlier rows (and the existing redemption code path) stay valid
--- — those customers were sold lifetime and we honor that.
+-- Context: Synra converted from a Lifetime deal to an Annual model.
+--   * 'annual'         = Stripe-billed $149/year, advertised on the
+--                        public marketing site.
+--   * 'annual_appsumo' = AppSumo-billed $99/year, redeemed via the
+--                        /appsumo/redeem flow.
 --
--- Plan limits for annual_appsumo and lifetime_appsumo are identical
--- (see lib/usage-limits.ts). The plans differ only in expiry / renewal
--- handling (cron expiry at /api/cron/appsumo-expiry).
+-- Both plans share the same usage limits and the same yearly cadence;
+-- they are kept distinct because (a) refund / deactivate paths for
+-- AppSumo should never touch a real Stripe customer, and (b) revenue
+-- attribution stays clean for analytics.
+--
+-- We KEEP 'lifetime' and 'lifetime_appsumo' in the allowed set so any
+-- grandfathered rows continue to validate. Both old SKUs are still
+-- functional in code; only the public marketing copy moved away.
 --
 -- Safe to run on existing data: no rows are modified and every current
 -- value remains within the allowed set.
@@ -23,6 +29,7 @@ ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_plan_check
     'team'::text,
     'lifetime'::text,
     'lifetime_appsumo'::text,
+    'annual'::text,
     'annual_appsumo'::text
   ]));
 
@@ -35,5 +42,6 @@ ALTER TABLE organizations ADD CONSTRAINT organizations_plan_check
     'team'::text,
     'lifetime'::text,
     'lifetime_appsumo'::text,
+    'annual'::text,
     'annual_appsumo'::text
   ]));

@@ -14,6 +14,7 @@ interface SubscriptionDetail {
   status: string
   current_period_end: string | null
   stripe_customer_id: string | null
+  cancel_at_period_end?: boolean | null
 }
 
 const RENEWAL_BANNER_WINDOW_DAYS = 30
@@ -68,10 +69,22 @@ export default function BillingPage() {
   const isStripeLifetime = currentPlan === 'lifetime'
   const isAppsumoLifetime = currentPlan === 'lifetime_appsumo'
   const isAppsumoAnnual = currentPlan === 'annual_appsumo'
-  // Both AppSumo plans + the Stripe lifetime plan get the "you're on
-  // a paid plan, hide the upsell cards" treatment.
-  const isAnyPaidNonRecurring =
+  const isStripeAnnual = currentPlan === 'annual'
+  const isStripeStarter = currentPlan === 'starter'
+  // Plans that are paid but DON'T have a Stripe portal we can send the
+  // user to (lifetime is one-time, AppSumo plans aren't Stripe at all).
+  // Used to hide the "Manage Billing" button without hiding all plan
+  // info.
+  const isPaidNoStripePortal =
     isStripeLifetime || isAppsumoLifetime || isAppsumoAnnual
+  // Anyone with a paid plan (whether portal-managed or not). Used to
+  // suppress the upgrade cards shown to free users.
+  const hasPaidPlan =
+    isStripeStarter ||
+    isStripeAnnual ||
+    isStripeLifetime ||
+    isAppsumoAnnual ||
+    isAppsumoLifetime
 
   const periodEndIso = subscription?.current_period_end ?? null
   const daysLeft = daysUntil(periodEndIso)
@@ -81,7 +94,7 @@ export default function BillingPage() {
     daysLeft <= RENEWAL_BANNER_WINDOW_DAYS &&
     daysLeft >= 0
 
-  const handleUpgrade = async (plan: 'starter' | 'lifetime') => {
+  const handleUpgrade = async (plan: 'starter' | 'annual' | 'lifetime') => {
     setBillingLoading(plan)
     setBillingError(null)
     trackEvent('upgrade_clicked', { plan, current_plan: currentPlan, source: 'billing' })
@@ -180,9 +193,15 @@ export default function BillingPage() {
                   Renews <span className="text-white">{formatDate(periodEndIso)}</span>
                 </span>
               )}
+              {(isStripeAnnual || isStripeStarter) && periodEndIso && (
+                <span className="text-xs text-gray-300">
+                  {subscription?.cancel_at_period_end ? 'Cancels' : 'Renews'}{' '}
+                  <span className="text-white">{formatDate(periodEndIso)}</span>
+                </span>
+              )}
             </div>
           </div>
-          {!isFree && !isAnyPaidNonRecurring && (
+          {!isFree && !isPaidNoStripePortal && (
             <button
               onClick={handleManageBilling}
               disabled={billingLoading !== null}
@@ -226,30 +245,31 @@ export default function BillingPage() {
             </button>
           </div>
 
-          {/* Lifetime */}
+          {/* Annual — public Stripe $149/year SKU (matches marketing site). */}
           <div className="bg-[#111] border-2 border-blue-500/50 rounded-lg p-6 flex flex-col relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
-              BEST VALUE
+              SAVE 35%
             </div>
-            <h3 className="text-white font-semibold mb-1">Lifetime Access</h3>
+            <h3 className="text-white font-semibold mb-1">Annual Access</h3>
             <div className="flex items-baseline gap-1 mb-4">
-              <span className="text-3xl font-bold text-white">$69</span>
-              <span className="text-sm text-gray-400">one-time</span>
+              <span className="text-3xl font-bold text-white">$149</span>
+              <span className="text-sm text-gray-400">/year</span>
             </div>
             <ul className="text-sm text-gray-400 space-y-2 mb-6 flex-grow">
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>2 database connections</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>10,000 requests/day</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>PostgreSQL, MySQL, MS SQL & Supabase</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Read-only by default</span></li>
-              <li className="flex items-start gap-2"><span className="text-blue-400 flex-shrink-0">★</span><span className="text-blue-400 font-medium">Lifetime updates — pay once</span></li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 flex-shrink-0">★</span><span className="text-blue-400 font-medium">All updates included</span></li>
             </ul>
             <button
-              onClick={() => handleUpgrade('lifetime')}
+              onClick={() => handleUpgrade('annual')}
               disabled={billingLoading !== null}
               className="w-full px-4 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-md transition-all disabled:opacity-50"
             >
-              {billingLoading === 'lifetime' ? 'Redirecting...' : 'Get Lifetime Access'}
+              {billingLoading === 'annual' ? 'Redirecting...' : 'Get Annual Access'}
             </button>
+            <p className="text-center text-[11px] text-gray-500 mt-2">Renews annually, cancel anytime</p>
           </div>
         </div>
       )}

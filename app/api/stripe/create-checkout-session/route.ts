@@ -44,7 +44,10 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const { plan } = await request.json()
-    if (!plan || !['starter', 'pro', 'team', 'lifetime'].includes(plan)) {
+    if (
+      !plan ||
+      !['starter', 'annual', 'pro', 'team', 'lifetime'].includes(plan)
+    ) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
 

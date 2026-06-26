@@ -186,9 +186,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
     }
 
     console.log(`✅ Subscription activated for org ${organizationId}: ${plan}`)
-    
-    // Send Reddit CAPI Purchase event
-    const planValue = plan === 'starter' ? 19 : (plan === 'pro' ? 99 : 299)
+
+    // Send Reddit CAPI Purchase event. Default falls through to Team
+    // ($299) but every shipped plan is mapped explicitly so the value
+    // doesn't silently misreport revenue if a new plan is added.
+    const planValueMap: Record<string, number> = {
+      starter: 19,
+      annual: 149,
+      pro: 99,
+      team: 299,
+    }
+    const planValue = planValueMap[plan] ?? 299
     await sendRedditConversion({
       eventType: 'Purchase',
       conversionId: organizationId,

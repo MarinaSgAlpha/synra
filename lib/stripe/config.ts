@@ -59,6 +59,23 @@ export const PLANS = {
       'Lifetime updates',
     ],
   },
+  // Public Annual SKU — replaces the Lifetime offer on the marketing
+  // site. Same access tier as Starter but billed yearly at a discount
+  // (~35% off monthly).
+  // Create the recurring price in the Stripe Dashboard and set
+  // STRIPE_PRICE_ID_ANNUAL on the app service.
+  annual: {
+    name: 'Annual',
+    price: 149,
+    priceId: process.env.STRIPE_PRICE_ID_ANNUAL,
+    features: [
+      '2 database connections',
+      '10,000 requests/day',
+      'Read-only access',
+      'Email support',
+      'All updates included',
+    ],
+  },
   pro: {
     name: 'Pro',
     price: 99,
