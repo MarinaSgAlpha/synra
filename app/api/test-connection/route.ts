@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Client as PgClient } from 'pg'
 import mysql from 'mysql2/promise'
 import sql from 'mssql'
+import { hasPaidAccess } from '@/lib/subscription-access'
 
 const MAX_TEST_QUERIES = 10
 
@@ -62,14 +63,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credential not found' }, { status: 404 })
     }
 
-    // Check if user has paid subscription
+    // Check if user has paid access (lifetime/AppSumo have no Stripe subscription ID)
     const { data: subscription } = await admin
       .from('subscriptions')
-      .select('stripe_subscription_id, status')
+      .select('stripe_subscription_id, status, plan')
       .eq('organization_id', membership.organization_id)
       .single()
 
-    const hasPaidSubscription = subscription?.stripe_subscription_id && subscription.status === 'active'
+    const hasPaidSubscription = hasPaidAccess(subscription?.plan, subscription?.status)
 
     // If not paid, check test query limit
     if (!hasPaidSubscription) {

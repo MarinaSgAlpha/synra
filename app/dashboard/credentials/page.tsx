@@ -5,6 +5,7 @@ import { useDashboard } from '@/contexts/DashboardContext'
 import type { SupportedService } from '@/types'
 import { trackEvent } from '@/lib/mixpanel'
 import { SupportChat, openAgent } from '@/components/SupportChat'
+import { hasPaidAccess } from '@/lib/subscription-access'
 
 interface ConnectionItem {
   id: string
@@ -74,8 +75,7 @@ export default function ConnectionsPage() {
 
       if (subRes.ok) {
         const { subscription } = await subRes.json()
-        const hasPaid = subscription?.stripe_subscription_id && subscription?.status === 'active'
-        setHasPaidSubscription(hasPaid || false)
+        setHasPaidSubscription(hasPaidAccess(subscription?.plan, subscription?.status))
       }
     } catch (err) {
       console.error('Error loading data:', err)
