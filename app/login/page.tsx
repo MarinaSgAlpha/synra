@@ -30,9 +30,6 @@ function LoginPageInner() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [companySize, setCompanySize] = useState('')
-  const [useCase, setUseCase] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -88,9 +85,6 @@ function LoginPageInner() {
           options: {
             data: {
               name,
-              company_name: companyName,
-              company_size: companySize,
-              use_case: useCase,
             },
           },
         })
@@ -98,7 +92,10 @@ function LoginPageInner() {
         if (signUpError) throw signUpError
 
         if (data.user) {
-          // Call API to create organization + user record + membership + subscription
+          // Create organization + user record + membership + subscription.
+          // Profile questions (company, size, industry, etc.) are collected
+          // afterward on the shared /onboarding step so Google and email
+          // signups go through the same flow.
           const response = await fetch('/api/auth/setup-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -106,9 +103,6 @@ function LoginPageInner() {
               userId: data.user.id,
               email: data.user.email,
               name,
-              companyName,
-              companySize,
-              useCase,
             }),
           })
 
@@ -119,9 +113,9 @@ function LoginPageInner() {
 
           // Check if email confirmation is required
           if (data.session) {
-            // No email confirmation needed — go straight to dashboard
-            setMessage('Account created! Redirecting to dashboard...')
-            setTimeout(() => router.push('/dashboard'), 1500)
+            // No email confirmation needed — go straight to onboarding
+            setMessage('Account created! Redirecting…')
+            setTimeout(() => router.push('/onboarding'), 1500)
           } else {
             // Email confirmation required — tell user to check email
             setMessage('Account created! Please check your email to confirm your account, then sign in.')
@@ -195,71 +189,19 @@ function LoginPageInner() {
 
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
-                    placeholder="Your name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
-                    placeholder="Your company or project name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Company Size
-                  </label>
-                  <select
-                    value={companySize}
-                    onChange={(e) => setCompanySize(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none appearance-none"
-                  >
-                    <option value="" disabled>Select team size</option>
-                    <option value="solo">Solo / Freelancer</option>
-                    <option value="2-10">2–10 employees</option>
-                    <option value="11-50">11–50 employees</option>
-                    <option value="51-200">51–200 employees</option>
-                    <option value="201-1000">201–1,000 employees</option>
-                    <option value="1000+">1,000+ employees</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    What do you want to connect to AI?
-                  </label>
-                  <input
-                    type="text"
-                    value={useCase}
-                    onChange={(e) => setUseCase(e.target.value)}
-                    className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g. Supabase, PostgreSQL, MySQL, Stripe, Shopify"
-                  />
-                  <p className="text-[11px] text-gray-600 mt-1">
-                    Separate with commas. Helps us prioritize connectors.
-                  </p>
-                </div>
-              </>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white focus:border-blue-500 focus:outline-none"
+                  placeholder="Your name"
+                />
+              </div>
             )}
 
             <div>

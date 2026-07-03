@@ -1,13 +1,27 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardProvider, useDashboard } from '@/contexts/DashboardContext'
 import { Sidebar } from '@/components/Sidebar'
 import { MixpanelProvider } from '@/components/MixpanelProvider'
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
-  const { loading } = useDashboard()
+  const { loading, organization } = useDashboard()
+  const router = useRouter()
 
-  if (loading) {
+  // New users (both Google + email signup) must finish onboarding first.
+  const needsOnboarding = Boolean(
+    organization && !organization.onboarding_completed_at
+  )
+
+  useEffect(() => {
+    if (!loading && needsOnboarding) {
+      router.replace('/onboarding')
+    }
+  }, [loading, needsOnboarding, router])
+
+  if (loading || needsOnboarding) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="flex items-center gap-3">

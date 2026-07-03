@@ -8,6 +8,9 @@ export interface Organization {
   plan: 'free' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo' | 'annual' | 'annual_appsumo';
   company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
   use_case: string | null; // What user wants to connect: sql, github, etc.
+  industry: string | null;
+  referral_source: string | null; // How the user heard about Synra
+  onboarding_completed_at: string | null; // NULL = onboarding still pending
   created_at: string;
   updated_at: string;
 }

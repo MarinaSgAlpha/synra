@@ -2,21 +2,14 @@
 
 import { useDashboard } from '@/contexts/DashboardContext'
 import { useState, useEffect } from 'react'
-
-const COMPANY_SIZES = [
-  { value: 'solo', label: 'Solo / Freelancer' },
-  { value: '2-10', label: '2–10 employees' },
-  { value: '11-50', label: '11–50 employees' },
-  { value: '51-200', label: '51–200 employees' },
-  { value: '201-1000', label: '201–1,000 employees' },
-  { value: '1000+', label: '1,000+ employees' },
-]
+import { COMPANY_SIZES, INDUSTRIES } from '@/lib/onboarding-options'
 
 export default function SettingsPage() {
   const { organization, user, refresh } = useDashboard()
   const [orgName, setOrgName] = useState('')
   const [userName, setUserName] = useState('')
   const [companySize, setCompanySize] = useState('')
+  const [industry, setIndustry] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +18,7 @@ export default function SettingsPage() {
     if (organization) {
       setOrgName(organization.name || '')
       setCompanySize(organization.company_size || '')
+      setIndustry(organization.industry || '')
     }
     if (user) {
       setUserName(user.name || '')
@@ -43,6 +37,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: orgName,
           company_size: companySize || null,
+          industry: industry || null,
           user_name: userName,
         }),
       })
@@ -67,7 +62,8 @@ export default function SettingsPage() {
   const hasChanges =
     orgName !== (organization?.name || '') ||
     userName !== (user?.name || '') ||
-    companySize !== (organization?.company_size || '')
+    companySize !== (organization?.company_size || '') ||
+    industry !== (organization?.industry || '')
 
   return (
     <div className="max-w-2xl">
@@ -134,6 +130,24 @@ export default function SettingsPage() {
             {COMPANY_SIZES.map((size) => (
               <option key={size.value} value={size.value}>
                 {size.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Industry
+          </label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none appearance-none"
+          >
+            <option value="">Not specified</option>
+            {INDUSTRIES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
               </option>
             ))}
           </select>

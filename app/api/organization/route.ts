@@ -13,7 +13,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, company_size, user_name } = await request.json()
+    const { name, company_size, industry, user_name } = await request.json()
 
     // Get user's organization
     const { data: membership } = await admin
@@ -35,6 +35,7 @@ export async function PATCH(request: NextRequest) {
     const updates: Record<string, any> = {}
     if (name !== undefined) updates.name = name
     if (company_size !== undefined) updates.company_size = company_size
+    if (industry !== undefined) updates.industry = industry
     updates.updated_at = new Date().toISOString()
 
     const { data: org, error } = await admin
