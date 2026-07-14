@@ -7,6 +7,8 @@ export interface Organization {
   logo_url: string | null;
   plan: 'free' | 'solo' | 'starter' | 'pro' | 'team' | 'lifetime' | 'lifetime_appsumo' | 'annual' | 'annual_appsumo';
   company_size: 'solo' | '2-10' | '11-50' | '51-200' | '201-1000' | '1000+' | null;
+  referral_code?: string | null;
+  referred_by_organization_id?: string | null;
   use_case: string | null; // What user wants to connect: sql, github, etc.
   industry: string | null;
   referral_source: string | null; // How the user heard about Synra

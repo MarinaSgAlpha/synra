@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe, PLANS } from '@/lib/stripe/config'
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_TRIAL_DAYS, REFERRAL_TRIAL_DAYS } from '@/lib/referrals'
 
 // POST — Create a Stripe Checkout session for upgrading a plan
 export async function POST(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Get organization and subscription
     const { data: org } = await admin
       .from('organizations')
-      .select('id, name, slug')
+      .select('id, name, slug, referred_by_organization_id')
       .eq('id', membership.organization_id)
       .single()
 
@@ -96,9 +97,16 @@ export async function POST(request: NextRequest) {
       // Referral/promo codes can be entered at checkout (used later by the
       // referral program; harmless when no promotions exist).
       allow_promotion_codes: true,
-      // Solo gets a 7-day trial so marketing can keep a "start free" claim.
+      // Solo gets a 7-day trial so marketing can keep a "start free"
+      // claim; referred signups get 14 days as the referee-side reward.
       ...(mode === 'subscription' && plan === 'solo'
-        ? { subscription_data: { trial_period_days: 7 } }
+        ? {
+            subscription_data: {
+              trial_period_days: org.referred_by_organization_id
+                ? REFERRAL_TRIAL_DAYS
+                : DEFAULT_TRIAL_DAYS,
+            },
+          }
         : {}),
       success_url: `${origin}/dashboard?upgrade=success`,
       cancel_url: `${origin}/dashboard?upgrade=canceled`,

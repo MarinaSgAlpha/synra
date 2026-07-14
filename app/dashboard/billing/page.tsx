@@ -19,6 +19,16 @@ interface SubscriptionDetail {
 
 const RENEWAL_BANNER_WINDOW_DAYS = 30
 
+interface ReferralInfo {
+  code: string
+  link: string
+  signed_up: number
+  rewarded: number
+  total_credit_cents: number
+  rewards_this_year: number
+  yearly_cap: number
+}
+
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null
   const target = new Date(iso).getTime()
@@ -45,6 +55,8 @@ export default function BillingPage() {
   const [billingLoading, setBillingLoading] = useState<string | null>(null)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionDetail | null>(null)
+  const [referral, setReferral] = useState<ReferralInfo | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   // Load the subscription row separately so we have current_period_end
   // for the renewal banner / "Renews on" label.
@@ -63,6 +75,35 @@ export default function BillingPage() {
       cancelled = true
     }
   }, [])
+
+  // Referral link + stats (also lazily generates the org's code)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/referrals')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.code) return
+        setReferral(data as ReferralInfo)
+      })
+      .catch(() => {
+        /* non-fatal; the referral card just won't render */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleCopyReferralLink = async () => {
+    if (!referral) return
+    try {
+      await navigator.clipboard.writeText(referral.link)
+      setLinkCopied(true)
+      trackEvent('referral_link_copied', { current_plan: currentPlan })
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
 
   const currentPlan = (organization?.plan || 'free').toLowerCase()
   const isFree = currentPlan === 'free'
@@ -337,6 +378,50 @@ export default function BillingPage() {
             For receipts or questions, email{' '}
             <a href="mailto:hello@mcpserver.design" className="text-blue-400 hover:text-blue-300">hello@mcpserver.design</a>.
           </p>
+        </div>
+      )}
+
+      {/* Referral program — give a month, get a month */}
+      {referral && (
+        <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mt-6">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-white font-semibold">Refer a friend, get a month free</h3>
+            <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-[10px] text-green-400 font-mono uppercase tracking-wider">New</span>
+          </div>
+          <p className="text-sm text-gray-400 mb-4">
+            Friends who sign up with your link get a 14-day trial instead of 7. When they
+            become a paying customer, you get one month of your plan free — stackable, up
+            to {referral.yearly_cap} months a year.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <code className="flex-1 px-3 py-2.5 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-xs text-gray-300 font-mono truncate">
+              {referral.link}
+            </code>
+            <button
+              onClick={handleCopyReferralLink}
+              className="px-5 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all whitespace-nowrap"
+            >
+              {linkCopied ? 'Copied!' : 'Copy Link'}
+            </button>
+          </div>
+          {(referral.signed_up > 0 || referral.rewarded > 0) && (
+            <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-[#1c1c1c]">
+              <div>
+                <p className="text-lg font-bold text-white">{referral.signed_up}</p>
+                <p className="text-xs text-gray-500">friends signed up</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-white">{referral.rewarded}</p>
+                <p className="text-xs text-gray-500">converted to paid</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-green-400">
+                  ${(referral.total_credit_cents / 100).toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500">credit earned</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

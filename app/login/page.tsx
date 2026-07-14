@@ -45,6 +45,15 @@ function LoginPageInner() {
     if (callbackError) setError(callbackError)
   }, [searchParams])
 
+  // Persist a referral code in a cookie so it survives the Google OAuth
+  // round-trip and is readable by the server-side org-creation routes.
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref && /^[a-z0-9]{4,16}$/i.test(ref)) {
+      document.cookie = `synra_ref=${ref}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`
+    }
+  }, [searchParams])
+
   const handleGoogleSignIn = async () => {
     setError(null)
     setMessage(null)

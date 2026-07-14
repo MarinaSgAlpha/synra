@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe/config'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rewardReferralIfEligible } from '@/lib/referrals'
 import { sendRedditConversion } from '@/lib/reddit-capi'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -307,6 +308,19 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, admin: any
     .eq('id', sub.id)
 
   console.log(`✅ Invoice paid for org ${sub.organization_id}`)
+
+  // Referral reward: fires on the referred org's first REAL payment.
+  // $0 invoices (trial start) don't count — the referrer only gets their
+  // free month once the friend actually converts to paying.
+  if ((invoice.amount_paid || 0) > 0) {
+    try {
+      await rewardReferralIfEligible(admin, stripe, sub.organization_id)
+    } catch (refError) {
+      // Never fail the webhook over a reward — the referral stays
+      // 'signed_up' and is retried on the next paid invoice.
+      console.error('Referral reward failed:', refError)
+    }
+  }
 }
 
 // Handle failed invoice payment

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
+import { generateReferralCode, recordReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,11 +41,20 @@ export async function POST(request: NextRequest) {
         plan: 'free',
         company_size: companySize || null,
         use_case: useCase || null,
+        referral_code: generateReferralCode(),
       })
       .select()
       .single()
 
     if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`)
+
+    // Link to referrer if the login page captured a ?ref= code. Never
+    // blocks signup — bad/stale codes are ignored.
+    try {
+      await recordReferralSignup(supabase, org.id, request.cookies.get(REFERRAL_COOKIE)?.value)
+    } catch (refError) {
+      console.error('Referral signup tracking failed:', refError)
+    }
 
     // 2. Create user record — use auth user ID as the users.id
     const { data: user, error: userError } = await supabase

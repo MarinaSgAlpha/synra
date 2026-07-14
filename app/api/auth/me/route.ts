@@ -2,6 +2,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
+import { cookies } from 'next/headers'
+import { generateReferralCode, recordReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals'
 
 // GET — fetch current user's profile + organization
 // If user/org records don't exist yet (e.g. signup partially failed), create them
@@ -37,11 +39,20 @@ export async function GET() {
         .insert({
           name: orgName,
           slug: orgSlug,
+          referral_code: generateReferralCode(),
         })
         .select()
         .single()
 
       if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`)
+
+      // Link to referrer if the login page captured a ?ref= code.
+      try {
+        const cookieStore = await cookies()
+        await recordReferralSignup(admin, org.id, cookieStore.get(REFERRAL_COOKIE)?.value)
+      } catch (refError) {
+        console.error('Referral signup tracking failed:', refError)
+      }
 
       // Create user record with id = auth user id
       const { data: newUser, error: userError } = await admin
