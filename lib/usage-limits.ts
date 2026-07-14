@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isGrandfatheredFreeOrg } from '@/lib/subscription-access'
 
 // Plan limits
 export const PLAN_LIMITS = {
@@ -7,8 +8,16 @@ export const PLAN_LIMITS = {
     daily_requests: 100,
     features: ['read_only'],
   },
+  // Entry SKU for new signups now that the free tier is closed to new
+  // accounts. One connection, capped volume — the upgrade axis to
+  // Starter is connections (3) and daily request headroom.
+  solo: {
+    max_credentials: 1,
+    daily_requests: 1000,
+    features: ['read_only'],
+  },
   starter: {
-    max_credentials: 2,
+    max_credentials: 3,
     daily_requests: 10000,
     features: ['read_only'],
   },
@@ -21,7 +30,7 @@ export const PLAN_LIMITS = {
   // tier as Starter — the price difference vs Starter is purely the
   // yearly-vs-monthly cadence, not a feature uplift.
   annual: {
-    max_credentials: 2,
+    max_credentials: 3,
     daily_requests: 10000,
     features: ['read_only'],
   },
@@ -61,6 +70,9 @@ interface UsageCheck {
   reason?: string
   current?: number
   limit?: number
+  /** True when the org has no plan granting access (post-cutoff free org)
+   * and needs to subscribe — distinct from hitting a plan limit. */
+  subscription_required?: boolean
 }
 
 // Check if organization can create a new credential
@@ -70,7 +82,7 @@ export async function canCreateCredential(organizationId: string): Promise<Usage
   // Get organization plan
   const { data: org } = await admin
     .from('organizations')
-    .select('plan')
+    .select('plan, created_at')
     .eq('id', organizationId)
     .single()
 
@@ -79,6 +91,18 @@ export async function canCreateCredential(organizationId: string): Promise<Usage
   }
 
   const plan = org.plan as PlanType
+
+  // Free tier is closed to new signups. Canceled subscriptions also land
+  // here: the Stripe webhook downgrades the org to 'free', and post-cutoff
+  // orgs on 'free' have no product access.
+  if (plan === 'free' && !isGrandfatheredFreeOrg(plan, org.created_at)) {
+    return {
+      allowed: false,
+      reason: 'A subscription is required to add database connections',
+      subscription_required: true,
+    }
+  }
+
   const limits = PLAN_LIMITS[plan]
 
   // Unlimited credentials
@@ -114,7 +138,7 @@ export async function canMakeRequest(organizationId: string): Promise<UsageCheck
   // Get organization plan
   const { data: org } = await admin
     .from('organizations')
-    .select('plan')
+    .select('plan, created_at')
     .eq('id', organizationId)
     .single()
 
@@ -123,6 +147,17 @@ export async function canMakeRequest(organizationId: string): Promise<UsageCheck
   }
 
   const plan = org.plan as PlanType
+
+  // Post-cutoff free orgs (new signups and canceled subscriptions) have no
+  // MCP access — this also covers old endpoint URLs that predate a cancel.
+  if (plan === 'free' && !isGrandfatheredFreeOrg(plan, org.created_at)) {
+    return {
+      allowed: false,
+      reason: 'A subscription is required to use MCP endpoints',
+      subscription_required: true,
+    }
+  }
+
   const limits = PLAN_LIMITS[plan]
 
   // Unlimited requests

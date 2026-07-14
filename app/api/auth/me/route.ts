@@ -69,12 +69,13 @@ export async function GET() {
           joined_at: new Date().toISOString(),
         })
 
-      // Create starter subscription
+      // Bootstrap subscription row. 'free' matches the org default —
+      // post-cutoff orgs have no product access until they subscribe.
       await admin
         .from('subscriptions')
         .insert({
           organization_id: org.id,
-          plan: 'starter',
+          plan: 'free',
           status: 'active',
         })
 

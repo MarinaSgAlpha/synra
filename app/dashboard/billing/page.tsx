@@ -71,6 +71,7 @@ export default function BillingPage() {
   const isAppsumoAnnual = currentPlan === 'annual_appsumo'
   const isStripeAnnual = currentPlan === 'annual'
   const isStripeStarter = currentPlan === 'starter'
+  const isStripeSolo = currentPlan === 'solo'
   // Plans that are paid but DON'T have a Stripe portal we can send the
   // user to (lifetime is one-time, AppSumo plans aren't Stripe at all).
   // Used to hide the "Manage Billing" button without hiding all plan
@@ -80,6 +81,7 @@ export default function BillingPage() {
   // Anyone with a paid plan (whether portal-managed or not). Used to
   // suppress the upgrade cards shown to free users.
   const hasPaidPlan =
+    isStripeSolo ||
     isStripeStarter ||
     isStripeAnnual ||
     isStripeLifetime ||
@@ -94,7 +96,7 @@ export default function BillingPage() {
     daysLeft <= RENEWAL_BANNER_WINDOW_DAYS &&
     daysLeft >= 0
 
-  const handleUpgrade = async (plan: 'starter' | 'annual' | 'lifetime') => {
+  const handleUpgrade = async (plan: 'solo' | 'starter' | 'annual' | 'lifetime') => {
     setBillingLoading(plan)
     setBillingError(null)
     trackEvent('upgrade_clicked', { plan, current_plan: currentPlan, source: 'billing' })
@@ -193,9 +195,13 @@ export default function BillingPage() {
                   Renews <span className="text-white">{formatDate(periodEndIso)}</span>
                 </span>
               )}
-              {(isStripeAnnual || isStripeStarter) && periodEndIso && (
+              {(isStripeAnnual || isStripeStarter || isStripeSolo) && periodEndIso && (
                 <span className="text-xs text-gray-300">
-                  {subscription?.cancel_at_period_end ? 'Cancels' : 'Renews'}{' '}
+                  {subscription?.status === 'trialing'
+                    ? 'Trial ends'
+                    : subscription?.cancel_at_period_end
+                      ? 'Cancels'
+                      : 'Renews'}{' '}
                   <span className="text-white">{formatDate(periodEndIso)}</span>
                 </span>
               )}
@@ -219,9 +225,37 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Plan options for free users */}
+      {/* Plan options for free users (grandfathered orgs keep free access;
+          post-cutoff orgs must pick a plan before adding connections) */}
       {isFree && (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* Solo — entry SKU with 7-day trial */}
+          <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 flex flex-col relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-gradient-to-br from-green-500 to-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+              7-DAY FREE TRIAL
+            </div>
+            <h3 className="text-white font-semibold mb-1">Solo</h3>
+            <div className="flex items-baseline gap-1 mb-4">
+              <span className="text-3xl font-bold text-white">$9.99</span>
+              <span className="text-sm text-gray-400">/month</span>
+            </div>
+            <ul className="text-sm text-gray-400 space-y-2 mb-6 flex-grow">
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>1 database connection</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>1,000 requests/day</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>PostgreSQL, MySQL, MS SQL & Supabase</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Read-only by default</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Email support</span></li>
+            </ul>
+            <button
+              onClick={() => handleUpgrade('solo')}
+              disabled={billingLoading !== null}
+              className="w-full px-4 py-2.5 text-sm border-2 border-blue-500 hover:border-blue-400 bg-transparent text-blue-400 hover:text-blue-300 font-medium rounded-md transition-all disabled:opacity-50"
+            >
+              {billingLoading === 'solo' ? 'Redirecting...' : 'Start Free Trial'}
+            </button>
+            <p className="text-center text-[11px] text-gray-500 mt-2">Card required, cancel anytime</p>
+          </div>
+
           {/* Starter */}
           <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 flex flex-col">
             <h3 className="text-white font-semibold mb-1">Starter</h3>
@@ -230,7 +264,7 @@ export default function BillingPage() {
               <span className="text-sm text-gray-400">/month</span>
             </div>
             <ul className="text-sm text-gray-400 space-y-2 mb-6 flex-grow">
-              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>2 database connections</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>3 database connections</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>10,000 requests/day</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>PostgreSQL, MySQL, MS SQL & Supabase</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Read-only by default</span></li>
@@ -256,7 +290,7 @@ export default function BillingPage() {
               <span className="text-sm text-gray-400">/year</span>
             </div>
             <ul className="text-sm text-gray-400 space-y-2 mb-6 flex-grow">
-              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>2 database connections</span></li>
+              <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>3 database connections</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>10,000 requests/day</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>PostgreSQL, MySQL, MS SQL & Supabase</span></li>
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Read-only by default</span></li>

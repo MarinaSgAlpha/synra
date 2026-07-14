@@ -191,6 +191,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, admin: 
     // ($299) but every shipped plan is mapped explicitly so the value
     // doesn't silently misreport revenue if a new plan is added.
     const planValueMap: Record<string, number> = {
+      solo: 9.99,
       starter: 19,
       annual: 149,
       pro: 99,

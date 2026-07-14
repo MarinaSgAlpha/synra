@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: usageCheck.reason || 'Cannot create credential',
         upgrade_required: true,
+        ...(usageCheck.subscription_required ? { subscription_required: true } : {}),
       }, { status: 403 })
     }
 

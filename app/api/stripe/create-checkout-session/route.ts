@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const { plan } = await request.json()
     if (
       !plan ||
-      !['starter', 'annual', 'pro', 'team', 'lifetime'].includes(plan)
+      !['solo', 'starter', 'annual', 'pro', 'team', 'lifetime'].includes(plan)
     ) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
@@ -93,6 +93,13 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
+      // Referral/promo codes can be entered at checkout (used later by the
+      // referral program; harmless when no promotions exist).
+      allow_promotion_codes: true,
+      // Solo gets a 7-day trial so marketing can keep a "start free" claim.
+      ...(mode === 'subscription' && plan === 'solo'
+        ? { subscription_data: { trial_period_days: 7 } }
+        : {}),
       success_url: `${origin}/dashboard?upgrade=success`,
       cancel_url: `${origin}/dashboard?upgrade=canceled`,
       metadata: {

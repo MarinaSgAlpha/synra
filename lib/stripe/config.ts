@@ -30,10 +30,24 @@ export const PLANS = {
     price: 0,
     priceId: null,
     features: [
-      '1 credential',
+      '2 database connections',
       '100 requests/day',
       'Read-only access',
       'Basic support',
+    ],
+  },
+  // Entry SKU for new signups after the free tier was closed. 7-day
+  // trial is applied at checkout (subscription_data.trial_period_days),
+  // not on the Stripe price itself.
+  solo: {
+    name: 'Solo',
+    price: 9.99,
+    priceId: process.env.STRIPE_PRICE_ID_SOLO,
+    features: [
+      '1 database connection',
+      '1,000 requests/day',
+      'Read-only access',
+      'Email support',
     ],
   },
   starter: {
@@ -41,7 +55,7 @@ export const PLANS = {
     price: 19,
     priceId: process.env.STRIPE_PRICE_ID_STARTER,
     features: [
-      '2 database connections',
+      '3 database connections',
       '10,000 requests/day',
       'Read-only access',
       'Email support',
@@ -69,7 +83,7 @@ export const PLANS = {
     price: 149,
     priceId: process.env.STRIPE_PRICE_ID_ANNUAL,
     features: [
-      '2 database connections',
+      '3 database connections',
       '10,000 requests/day',
       'Read-only access',
       'Email support',
