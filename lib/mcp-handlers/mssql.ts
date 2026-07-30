@@ -8,7 +8,7 @@
  */
 
 import sql from 'mssql'
-import { sanitizeSql, sanitizeTableName } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, withSqlHint } from '@/lib/sql-sanitizer'
 import type { ToolCallResult } from '@/lib/mcp-handlers/supabase'
 
 const MAX_ROWS = 500
@@ -133,7 +133,10 @@ function createMssqlConfig(config: MssqlConfig): sql.config {
       encrypt: useEncrypt,
       trustServerCertificate: useEncrypt, // Allow self-signed certs common in cloud
       connectTimeout: 10000,
-      requestTimeout: 30000,
+      // 120s: Dataverse/CRM joins routinely exceed the old 30s cap (see
+      // customer timeout errors in usage_logs). Must stay below the
+      // route's maxDuration so the DB, not the platform, kills the query.
+      requestTimeout: 120000,
     },
   }
 }
@@ -316,8 +319,12 @@ export async function handleMssqlTool(
         if (!args.sql) {
           return { success: false, error: 'sql is required' }
         }
-        const result = await executeSql(pool, args.sql)
-        return { success: true, data: result }
+        try {
+          const result = await executeSql(pool, args.sql)
+          return { success: true, data: result }
+        } catch (err: any) {
+          return { success: false, error: withSqlHint(err.message) }
+        }
       }
 
       default:

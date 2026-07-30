@@ -61,6 +61,22 @@ export function sanitizeSql(sql: string): SanitizeResult {
 }
 
 /**
+ * Append a self-correction hint to schema-related SQL errors so MCP
+ * clients (AI models) recover in one retry instead of guessing. Wrong
+ * column names and reserved-word syntax errors are the most common
+ * failures in usage_logs.
+ */
+export function withSqlHint(message?: string): string {
+  const msg = message || 'SQL execution failed'
+  const isSchemaError =
+    /column|does not exist|invalid object|not found|incorrect syntax/i.test(msg)
+  if (isSchemaError) {
+    return `${msg} — Hint: call describe_table to verify exact table and column names before retrying. Quote reserved words used as identifiers ("name" in PostgreSQL, [name] in SQL Server).`
+  }
+  return msg
+}
+
+/**
  * Sanitize a table name to prevent SQL injection
  * Only allows alphanumeric, underscores, and dots (for schema.table)
  */

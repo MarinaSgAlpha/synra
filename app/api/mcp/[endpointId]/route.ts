@@ -32,6 +32,12 @@ import type { MysqlConfig } from '@/lib/mcp-handlers/mysql'
 import type { MssqlConfig } from '@/lib/mcp-handlers/mssql'
 import { NextRequest, NextResponse } from 'next/server'
 
+// The app runs on Railway (long-lived server, no per-request duration
+// cap), so the 120s DB query timeouts in the mcp-handlers apply as-is.
+// maxDuration is a no-op on Railway but guards any future Vercel deploy
+// from killing the function before the DB timeout fires.
+export const maxDuration = 150
+
 // ─── Content negotiation ────────────────────────────────────────────
 
 function clientAcceptsSSE(request: NextRequest): boolean {

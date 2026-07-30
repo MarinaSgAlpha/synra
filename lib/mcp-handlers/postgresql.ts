@@ -8,7 +8,7 @@
  */
 
 import { Client } from 'pg'
-import { sanitizeSql, sanitizeTableName } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, withSqlHint } from '@/lib/sql-sanitizer'
 import type { ToolCallResult } from '@/lib/mcp-handlers/supabase'
 
 const MAX_ROWS = 500
@@ -33,7 +33,8 @@ export const POSTGRESQL_TOOLS = [
       properties: {
         table_name: {
           type: 'string',
-          description: 'Name of the table to describe',
+          description:
+            'Name of the table to describe. Use schema.table for tables outside the public schema.',
         },
       },
       required: ['table_name'],
@@ -48,7 +49,8 @@ export const POSTGRESQL_TOOLS = [
       properties: {
         table_name: {
           type: 'string',
-          description: 'Name of the table to query',
+          description:
+            'Name of the table to query. Use schema.table for tables outside the public schema.',
         },
         select: {
           type: 'string',
@@ -131,7 +133,10 @@ function createPgClient(config: PostgresqlConfig): Client {
     password: config.password,
     ssl: useSsl ? { rejectUnauthorized: false } : undefined,
     connectionTimeoutMillis: 10000,
-    statement_timeout: 30000,
+    // 120s: analytical joins routinely exceed the old 30s cap (see
+    // customer timeout errors in usage_logs). Must stay below the
+    // route's maxDuration so the DB, not the platform, kills the query.
+    statement_timeout: 120000,
   })
 }
 
@@ -139,13 +144,24 @@ function createPgClient(config: PostgresqlConfig): Client {
 
 async function listTables(client: Client): Promise<string[]> {
   const result = await client.query(
-    `SELECT table_name 
+    `SELECT table_schema, table_name 
      FROM information_schema.tables 
-     WHERE table_schema = 'public' 
+     WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
      AND table_type = 'BASE TABLE'
-     ORDER BY table_name`
+     ORDER BY table_schema, table_name`
   )
-  return result.rows.map((r) => r.table_name)
+  // Same convention as the MSSQL handler: tables outside the default
+  // schema are returned as schema.table so they round-trip through
+  // describe_table / query_table.
+  return result.rows.map((r) =>
+    r.table_schema !== 'public' ? `${r.table_schema}.${r.table_name}` : r.table_name
+  )
+}
+
+/** Split an already-sanitized name into [schema, table], defaulting to public. */
+function splitSchemaTable(safeName: string): [string, string] {
+  const parts = safeName.split('.').filter(Boolean)
+  return parts.length > 1 ? [parts[0], parts[1]] : ['public', parts[0]]
 }
 
 async function describeTable(
@@ -153,6 +169,7 @@ async function describeTable(
   tableName: string
 ): Promise<any[]> {
   const safeName = sanitizeTableName(tableName)
+  const [schema, table] = splitSchemaTable(safeName)
 
   const result = await client.query(
     `SELECT 
@@ -162,15 +179,15 @@ async function describeTable(
        column_default,
        character_maximum_length
      FROM information_schema.columns 
-     WHERE table_schema = 'public' 
-     AND table_name = $1
+     WHERE table_schema = $1 
+     AND table_name = $2
      ORDER BY ordinal_position`,
-    [safeName]
+    [schema, table]
   )
 
   if (result.rows.length === 0) {
     throw new Error(
-      `Table '${safeName}' not found or has no columns in public schema`
+      `Table '${safeName}' not found or has no columns. Call list_tables to see available tables (tables outside the public schema are listed as schema.table).`
     )
   }
 
@@ -192,6 +209,8 @@ async function queryTable(
   params: QueryParams
 ): Promise<any[]> {
   const safeName = sanitizeTableName(params.table_name)
+  const [schema, table] = splitSchemaTable(safeName)
+  const quotedName = `"${schema}"."${table}"`
   const limit = Math.min(params.limit || 50, MAX_ROWS)
   const offset = params.offset || 0
 
@@ -238,7 +257,7 @@ async function queryTable(
     orderStr = `ORDER BY "${params.order_by}" ${dir}`
   }
 
-  const sql = `SELECT ${selectCols} FROM "${safeName}" ${whereStr} ${orderStr} LIMIT ${limit} OFFSET ${offset}`
+  const sql = `SELECT ${selectCols} FROM ${quotedName} ${whereStr} ${orderStr} LIMIT ${limit} OFFSET ${offset}`
 
   const result = await client.query(sql, queryValues)
   return result.rows
@@ -309,8 +328,12 @@ export async function handlePostgresqlTool(
         if (!args.sql) {
           return { success: false, error: 'sql is required' }
         }
-        const result = await executeSql(client, args.sql)
-        return { success: true, data: result }
+        try {
+          const result = await executeSql(client, args.sql)
+          return { success: true, data: result }
+        } catch (err: any) {
+          return { success: false, error: withSqlHint(err.message) }
+        }
       }
 
       default:
