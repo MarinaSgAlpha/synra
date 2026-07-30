@@ -1,11 +1,12 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { SYNRA_SUPPORT_SYSTEM_PROMPT } from '@/lib/chat-system-prompt'
 
 const DAILY_LIMIT = 20
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+// DeepSeek exposes an OpenAI-compatible chat completions API.
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions'
+const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 const MAX_TOKENS = 500
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
@@ -74,34 +75,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.DEEPSEEK_API_KEY
     if (!apiKey) {
-      console.error('ANTHROPIC_API_KEY is not set')
+      console.error('DEEPSEEK_API_KEY is not set')
       return NextResponse.json(
         { error: "I'm having trouble right now. Please email hello@mcpserver.design for help." },
         { status: 500 }
       )
     }
 
-    const anthropic = new Anthropic({ apiKey })
-
     let assistantText = ''
     try {
-      const response = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: SYNRA_SUPPORT_SYSTEM_PROMPT,
-        messages: [
-          ...history.map((m) => ({ role: m.role, content: m.content })),
-          { role: 'user' as const, content: userMessage },
-        ],
+      const apiRes = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          messages: [
+            { role: 'system', content: SYNRA_SUPPORT_SYSTEM_PROMPT },
+            ...history.map((m) => ({ role: m.role, content: m.content })),
+            { role: 'user', content: userMessage },
+          ],
+        }),
       })
 
-      assistantText = response.content
-        .filter((block: any) => block.type === 'text')
-        .map((block: any) => block.text)
-        .join('\n')
-        .trim()
+      if (!apiRes.ok) {
+        const errBody = await apiRes.text().catch(() => '')
+        throw new Error(`DeepSeek API error ${apiRes.status}: ${errBody.slice(0, 300)}`)
+      }
+
+      const response = await apiRes.json()
+      assistantText = (response.choices?.[0]?.message?.content || '').trim()
 
       const durationMs = Date.now() - startedAt
 
@@ -113,8 +121,7 @@ export async function POST(request: NextRequest) {
         request_data: { message: userMessage.slice(0, 500) },
         response_status: 'success',
         duration_ms: durationMs,
-        tokens_used:
-          (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
+        tokens_used: response.usage?.total_tokens || 0,
       })
 
       const remaining = DAILY_LIMIT - ((usedToday || 0) + 1)
@@ -126,7 +133,7 @@ export async function POST(request: NextRequest) {
         daily_limit: DAILY_LIMIT,
       })
     } catch (err: any) {
-      console.error('Claude API error:', err)
+      console.error('DeepSeek API error:', err)
       const durationMs = Date.now() - startedAt
       await admin.from('usage_logs').insert({
         organization_id: organizationId,
@@ -135,7 +142,7 @@ export async function POST(request: NextRequest) {
         service_slug: 'synra_chat',
         request_data: { message: userMessage.slice(0, 500) },
         response_status: 'error',
-        error_message: err?.message?.slice(0, 500) || 'Anthropic API call failed',
+        error_message: err?.message?.slice(0, 500) || 'DeepSeek API call failed',
         duration_ms: durationMs,
       })
 
