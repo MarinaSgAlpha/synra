@@ -6,7 +6,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { sanitizeSql, sanitizeTableName } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, capSqlResult } from '@/lib/sql-sanitizer'
 
 const MAX_ROWS = 500
 
@@ -317,7 +317,7 @@ async function executeSql(
   })
 
   if (response.ok) {
-    return await response.json()
+    return capSqlResult(await response.json(), MAX_ROWS)
   }
 
   // If the RPC function doesn't exist, return a helpful message

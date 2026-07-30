@@ -8,7 +8,7 @@
  */
 
 import sql from 'mssql'
-import { sanitizeSql, sanitizeTableName, withSqlHint } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, withSqlHint, capSqlResult } from '@/lib/sql-sanitizer'
 import type { ToolCallResult } from '@/lib/mcp-handlers/supabase'
 
 const MAX_ROWS = 500
@@ -264,7 +264,7 @@ async function executeSql(pool: sql.ConnectionPool, sqlStr: string): Promise<any
     throw new Error(`SQL rejected: ${check.reason}`)
   }
   const result = await pool.request().query(sqlStr)
-  return result.recordset
+  return capSqlResult(result.recordset, MAX_ROWS)
 }
 
 // ─── Main Handler ───────────────────────────────────────────────────

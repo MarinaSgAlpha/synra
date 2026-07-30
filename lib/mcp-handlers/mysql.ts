@@ -8,7 +8,7 @@
  */
 
 import mysql from 'mysql2/promise'
-import { sanitizeSql, sanitizeTableName } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, capSqlResult } from '@/lib/sql-sanitizer'
 import type { ToolCallResult } from '@/lib/mcp-handlers/supabase'
 
 const MAX_ROWS = 500
@@ -248,7 +248,7 @@ async function executeSql(conn: mysql.Connection, sql: string): Promise<any> {
   }
 
   const [rows] = await conn.execute(sql)
-  return rows
+  return capSqlResult(rows, MAX_ROWS)
 }
 
 // ─── Main Handler ────────────────────────────────────────────────────

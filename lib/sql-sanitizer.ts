@@ -77,6 +77,24 @@ export function withSqlHint(message?: string): string {
 }
 
 /**
+ * Cap raw execute_sql results at maxRows. Uncapped results from a
+ * missing LIMIT can balloon the response (memory pressure on the
+ * gateway, wasted tokens in the client's context). The truncation
+ * notice tells the AI to add a LIMIT or aggregate instead.
+ */
+export function capSqlResult(result: any, maxRows: number): any {
+  if (!Array.isArray(result) || result.length <= maxRows) {
+    return result
+  }
+  return {
+    truncated: true,
+    notice: `Result truncated to ${maxRows} of ${result.length} rows. Add a LIMIT clause or use an aggregate query (COUNT, GROUP BY) to narrow the result.`,
+    row_count: maxRows,
+    rows: result.slice(0, maxRows),
+  }
+}
+
+/**
  * Sanitize a table name to prevent SQL injection
  * Only allows alphanumeric, underscores, and dots (for schema.table)
  */

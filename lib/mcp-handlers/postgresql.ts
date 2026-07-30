@@ -8,7 +8,7 @@
  */
 
 import { Client } from 'pg'
-import { sanitizeSql, sanitizeTableName, withSqlHint } from '@/lib/sql-sanitizer'
+import { sanitizeSql, sanitizeTableName, withSqlHint, capSqlResult } from '@/lib/sql-sanitizer'
 import type { ToolCallResult } from '@/lib/mcp-handlers/supabase'
 
 const MAX_ROWS = 500
@@ -271,7 +271,7 @@ async function executeSql(client: Client, sql: string): Promise<any> {
   }
 
   const result = await client.query(sql)
-  return result.rows
+  return capSqlResult(result.rows, MAX_ROWS)
 }
 
 // ─── Main Handler (dispatches tool calls) ───────────────────────────
