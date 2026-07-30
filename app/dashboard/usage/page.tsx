@@ -22,11 +22,51 @@ interface UsageStats {
   total_tokens: number
 }
 
+type SortKey =
+  | 'tool_name'
+  | 'credential_name'
+  | 'response_status'
+  | 'duration_ms'
+  | 'tokens_used'
+  | 'created_at'
+
+type SortDir = 'asc' | 'desc'
+
+const SORT_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'tool_name', label: 'Tool' },
+  { key: 'credential_name', label: 'Credential' },
+  { key: 'response_status', label: 'Status' },
+  { key: 'duration_ms', label: 'Duration' },
+  { key: 'tokens_used', label: 'Tokens' },
+  { key: 'created_at', label: 'Time' },
+]
+
+function compareLogs(a: UsageLog, b: UsageLog, key: SortKey): number {
+  switch (key) {
+    case 'tool_name':
+      return a.tool_name.localeCompare(b.tool_name)
+    case 'credential_name':
+      return a.credential_name.localeCompare(b.credential_name)
+    case 'response_status':
+      return a.response_status.localeCompare(b.response_status)
+    case 'duration_ms':
+      return (a.duration_ms ?? -1) - (b.duration_ms ?? -1)
+    case 'tokens_used':
+      return (a.tokens_used ?? -1) - (b.tokens_used ?? -1)
+    case 'created_at':
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    default:
+      return 0
+  }
+}
+
 export default function UsagePage() {
   const [logs, setLogs] = useState<UsageLog[]>([])
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'success' | 'error'>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   useEffect(() => {
     loadUsage()
@@ -49,6 +89,21 @@ export default function UsagePage() {
     }
   }
 
+  const sortedLogs = [...logs].sort((a, b) => {
+    const cmp = compareLogs(a, b, sortKey)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortKey(key)
+    // Newest / largest first feels natural for time and numbers
+    setSortDir(key === 'tool_name' || key === 'credential_name' || key === 'response_status' ? 'asc' : 'desc')
+  }
+
   const formatDuration = (ms: number | null) => {
     if (!ms) return '-'
     if (ms < 1000) return `${ms}ms`
@@ -60,7 +115,7 @@ export default function UsagePage() {
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    
+
     if (diffMins < 1) return 'Just now'
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
@@ -169,28 +224,32 @@ export default function UsagePage() {
             <table className="w-full">
               <thead className="bg-[#0a0a0a] border-b border-[#1c1c1c]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tool
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Credential
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duration
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tokens
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Time
-                  </th>
+                  {SORT_COLUMNS.map(({ key, label }) => {
+                    const active = sortKey === key
+                    return (
+                      <th
+                        key={key}
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSort(key)}
+                          className={`inline-flex items-center gap-1 transition-colors ${
+                            active ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                          }`}
+                        >
+                          {label}
+                          <span className="font-mono text-[10px] opacity-80" aria-hidden>
+                            {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1c1c1c]">
-                {logs.map((log) => (
+                {sortedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-[#0a0a0a] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
@@ -230,8 +289,6 @@ export default function UsagePage() {
               </tbody>
             </table>
           </div>
-
-          {/* Error messages expandable section could go here */}
         </div>
       ) : (
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-12 text-center">
