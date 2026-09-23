@@ -55,6 +55,7 @@ export default function BillingPage() {
   const [billingLoading, setBillingLoading] = useState<string | null>(null)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionDetail | null>(null)
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false)
   const [referral, setReferral] = useState<ReferralInfo | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
 
@@ -65,11 +66,13 @@ export default function BillingPage() {
     fetch('/api/auth/me')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (cancelled || !data?.subscription) return
-        setSubscription(data.subscription as SubscriptionDetail)
+        if (cancelled) return
+        if (data?.subscription) setSubscription(data.subscription as SubscriptionDetail)
+        setSubscriptionLoaded(true)
       })
       .catch(() => {
         /* non-fatal; banner / dates just won't render */
+        if (!cancelled) setSubscriptionLoaded(true)
       })
     return () => {
       cancelled = true
@@ -128,6 +131,19 @@ export default function BillingPage() {
     isStripeLifetime ||
     isAppsumoAnnual ||
     isAppsumoLifetime
+
+  // Paid Stripe customers (Solo/Starter/Annual) who lost their
+  // stripe_customer_id — e.g. a payment-processor cutover that cleared
+  // old customer IDs. Manage Billing hits the portal, which 404s with
+  // "No Stripe customer found," leaving them with no self-serve way to
+  // change plans. Fall back to the same checkout flow free users get:
+  // create-checkout-session lazily creates a new Stripe customer, so
+  // starting a fresh checkout repairs the billing record.
+  const needsCheckoutFallback =
+    subscriptionLoaded &&
+    !isFree &&
+    !isPaidNoStripePortal &&
+    !subscription?.stripe_customer_id
 
   const periodEndIso = subscription?.current_period_end ?? null
   const daysLeft = daysUntil(periodEndIso)
@@ -248,7 +264,7 @@ export default function BillingPage() {
               )}
             </div>
           </div>
-          {!isFree && !isPaidNoStripePortal && (
+          {!isFree && !isPaidNoStripePortal && !needsCheckoutFallback && (
             <button
               onClick={handleManageBilling}
               disabled={billingLoading !== null}
@@ -258,6 +274,12 @@ export default function BillingPage() {
             </button>
           )}
         </div>
+        {needsCheckoutFallback && (
+          <p className="text-xs text-amber-300/90 mt-4 pt-4 border-t border-[#1c1c1c]">
+            We can&apos;t reach your billing profile right now — pick a plan below to
+            re-link your card. Your access and current plan are unaffected either way.
+          </p>
+        )}
       </div>
 
       {billingError && (
@@ -267,10 +289,13 @@ export default function BillingPage() {
       )}
 
       {/* Plan options for free users (grandfathered orgs keep free access;
-          post-cutoff orgs must pick a plan before adding connections) */}
-      {isFree && (
+          post-cutoff orgs must pick a plan before adding connections) and
+          for paid orgs whose Stripe billing record needs to be re-linked
+          (needsCheckoutFallback) — same cards, current plan hidden. */}
+      {(isFree || needsCheckoutFallback) && (
         <div className="grid md:grid-cols-3 gap-4">
           {/* Solo — entry SKU with 7-day trial */}
+          {!isStripeSolo && (
           <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 flex flex-col relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-gradient-to-br from-green-500 to-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
               7-DAY FREE TRIAL
@@ -296,8 +321,10 @@ export default function BillingPage() {
             </button>
             <p className="text-center text-[11px] text-gray-500 mt-2">Card required, cancel anytime</p>
           </div>
+          )}
 
           {/* Starter */}
+          {!isStripeStarter && (
           <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 flex flex-col">
             <h3 className="text-white font-semibold mb-1">Starter</h3>
             <div className="flex items-baseline gap-1 mb-4">
@@ -319,8 +346,10 @@ export default function BillingPage() {
               {billingLoading === 'starter' ? 'Redirecting...' : 'Choose Starter'}
             </button>
           </div>
+          )}
 
           {/* Annual — public Stripe $149/year SKU (matches marketing site). */}
+          {!isStripeAnnual && (
           <div className="bg-[#111] border-2 border-blue-500/50 rounded-lg p-6 flex flex-col relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
               SAVE 35%
@@ -346,6 +375,7 @@ export default function BillingPage() {
             </button>
             <p className="text-center text-[11px] text-gray-500 mt-2">Renews annually, cancel anytime</p>
           </div>
+          )}
         </div>
       )}
 
