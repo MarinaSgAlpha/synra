@@ -6,6 +6,7 @@ import type { SupportedService } from '@/types'
 import { trackEvent } from '@/lib/mixpanel'
 import { SupportChat, openAgent } from '@/components/SupportChat'
 import { hasPaidAccess } from '@/lib/subscription-access'
+import { INSTRUCTIONS_KEY, MAX_INSTRUCTIONS_LENGTH } from '@/lib/connection-instructions'
 
 interface ConnectionItem {
   id: string
@@ -255,7 +256,13 @@ export default function ConnectionsPage() {
             nonEncryptedValues[field.key] = config[field.key]
           }
         }
-        
+
+        // Instructions live outside the per-service schema, so repopulate
+        // them explicitly or saving an edit would clear them.
+        if (typeof config[INSTRUCTIONS_KEY] === 'string' && config[INSTRUCTIONS_KEY]) {
+          nonEncryptedValues[INSTRUCTIONS_KEY] = config[INSTRUCTIONS_KEY]
+        }
+
         setConfigValues(nonEncryptedValues)
       }
     } catch (err) {
@@ -835,6 +842,30 @@ export default function ConnectionsPage() {
                   )}
                 </div>
               ))}
+
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">
+                  Instructions for the AI
+                  <span className="text-[11px] text-gray-500 font-normal ml-2">(optional)</span>
+                </label>
+                <textarea
+                  value={configValues[INSTRUCTIONS_KEY] || ''}
+                  onChange={(e) =>
+                    setConfigValues((prev) => ({ ...prev, [INSTRUCTIONS_KEY]: e.target.value }))
+                  }
+                  maxLength={MAX_INSTRUCTIONS_LENGTH}
+                  rows={5}
+                  placeholder={'e.g. Use only the reporting schema. Amounts are stored in cents. Always show the SQL you ran.'}
+                  className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none mt-1 resize-y"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Sent to the AI with every session on this connection. This is guidance, not a permission
+                  boundary. To restrict access, use a limited database user.{' '}
+                  <span className="text-gray-600">
+                    {(configValues[INSTRUCTIONS_KEY] || '').length}/{MAX_INSTRUCTIONS_LENGTH}
+                  </span>
+                </p>
+              </div>
 
               {selectedService.slug === 'neon' && (
                 <p className="text-[11px] text-gray-500 pt-1">

@@ -3,6 +3,29 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { encrypt } from '@/lib/encryption'
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
+import { INSTRUCTIONS_KEY, MAX_INSTRUCTIONS_LENGTH, normalizeInstructions } from '@/lib/connection-instructions'
+
+/**
+ * Validate and store the optional per-connection instructions on the
+ * processed config. Returns an error message when the value is too long.
+ * Empty / whitespace-only values are removed so they never reach storage.
+ */
+function applyInstructions(
+  submitted: Record<string, unknown>,
+  processed: Record<string, string>
+): string | null {
+  const raw = submitted[INSTRUCTIONS_KEY]
+  if (typeof raw === 'string' && raw.trim().length > MAX_INSTRUCTIONS_LENGTH) {
+    return `Instructions are too long (${raw.trim().length} characters). The limit is ${MAX_INSTRUCTIONS_LENGTH}.`
+  }
+  const value = normalizeInstructions(raw)
+  if (value) {
+    processed[INSTRUCTIONS_KEY] = value
+  } else {
+    delete processed[INSTRUCTIONS_KEY]
+  }
+  return null
+}
 
 // GET — list credentials for the current user's organization
 export async function GET() {
@@ -131,6 +154,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Per-connection AI instructions: plain text, trimmed, length-capped
+    const instructionsError = applyInstructions(config, processedConfig)
+    if (instructionsError) {
+      return NextResponse.json({ error: instructionsError }, { status: 400 })
+    }
+
     // Create credential using admin client (bypasses RLS)
     const { data: credential, error: credError } = await admin
       .from('credentials')
@@ -215,7 +244,7 @@ export async function PATCH(request: NextRequest) {
     // Verify the credential belongs to this organization
     const { data: existingCred } = await admin
       .from('credentials')
-      .select('id, organization_id, service_slug')
+      .select('id, organization_id, service_slug, config')
       .eq('id', id)
       .eq('organization_id', membership.organization_id)
       .single()
@@ -246,6 +275,21 @@ export async function PATCH(request: NextRequest) {
       if (typeof value === 'string' && value.length > 0) {
         processedConfig[key] = encryptedFields.has(key) ? encrypt(value as string) : value
       }
+    }
+
+    // Per-connection AI instructions: plain text, trimmed, length-capped.
+    // Submitting an empty value clears them.
+    const instructionsError = applyInstructions(config, processedConfig)
+    if (instructionsError) {
+      return NextResponse.json({ error: instructionsError }, { status: 400 })
+    }
+
+    // The edit form only knows the schema fields, so it never sends
+    // allowed_tables. Without this, saving an edit silently wiped the
+    // connection's table restrictions and exposed every table.
+    const existingConfig = (existingCred.config || {}) as Record<string, unknown>
+    if (processedConfig.allowed_tables === undefined && typeof existingConfig.allowed_tables === 'string') {
+      processedConfig.allowed_tables = existingConfig.allowed_tables
     }
 
     // Update credential

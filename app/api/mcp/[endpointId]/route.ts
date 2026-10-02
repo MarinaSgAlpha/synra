@@ -27,6 +27,7 @@ import { SUPABASE_TOOLS, handleSupabaseTool } from '@/lib/mcp-handlers/supabase'
 import { POSTGRESQL_TOOLS, handlePostgresqlTool } from '@/lib/mcp-handlers/postgresql'
 import { MYSQL_TOOLS, handleMysqlTool } from '@/lib/mcp-handlers/mysql'
 import { MSSQL_TOOLS, handleMssqlTool } from '@/lib/mcp-handlers/mssql'
+import { getConnectionInstructions, withInstructions } from '@/lib/connection-instructions'
 import type { PostgresqlConfig } from '@/lib/mcp-handlers/postgresql'
 import type { MysqlConfig } from '@/lib/mcp-handlers/mysql'
 import type { MssqlConfig } from '@/lib/mcp-handlers/mssql'
@@ -396,6 +397,11 @@ export async function POST(
           ? requested
           : '2025-03-26'
 
+      // Owner-written guidance for this connection, if any. Optional field
+      // in the MCP InitializeResult; clients that ignore it still get the
+      // same text on the tool description in tools/list.
+      const instructions = getConnectionInstructions(credential.config)
+
       return jsonRpcSuccess(request, id, {
         protocolVersion,
         capabilities: {
@@ -405,6 +411,7 @@ export async function POST(
           name: 'Synra MCP Gateway',
           version: '1.0.0',
         },
+        ...(instructions ? { instructions } : {}),
       })
     }
 
@@ -450,7 +457,14 @@ export async function POST(
         responseFormat: wantsSSE ? 'sse' : 'json',
       })
 
-      return jsonRpcSuccess(request, id, { tools })
+      // Append the connection's owner-written instructions to a tool
+      // description (copy — the tool definitions are shared constants).
+      const toolsWithInstructions = withInstructions(
+        tools,
+        getConnectionInstructions(credential.config)
+      )
+
+      return jsonRpcSuccess(request, id, { tools: toolsWithInstructions })
     }
 
     // ── Call a tool ─────────────────────────────────────────────────
