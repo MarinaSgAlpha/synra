@@ -39,6 +39,12 @@ import { NextRequest, NextResponse } from 'next/server'
 // from killing the function before the DB timeout fires.
 export const maxDuration = 150
 
+// Protocol versions this gateway actually implements (handshake-based).
+// Used by `initialize` (echo) and `server/discover` (advertised list).
+const SUPPORTED_PROTOCOL_VERSIONS = ['2024-11-05', '2025-03-26', '2025-06-18']
+
+const SERVER_INFO = { name: 'Synra MCP Gateway', version: '1.0.0' }
+
 // ─── Content negotiation ────────────────────────────────────────────
 
 function clientAcceptsSSE(request: NextRequest): boolean {
@@ -386,14 +392,9 @@ export async function POST(
       // support; otherwise fall back to our current default. This keeps
       // older clients (Zapier MCP v4.0.1, Claude Desktop) happy without
       // forcing a single version onto everyone.
-      const SUPPORTED_PROTOCOL_VERSIONS = new Set([
-        '2024-11-05',
-        '2025-03-26',
-        '2025-06-18',
-      ])
       const requested = rpcParams?.protocolVersion
       const protocolVersion =
-        typeof requested === 'string' && SUPPORTED_PROTOCOL_VERSIONS.has(requested)
+        typeof requested === 'string' && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
           ? requested
           : '2025-03-26'
 
@@ -407,10 +408,26 @@ export async function POST(
         capabilities: {
           tools: { listChanged: false },
         },
-        serverInfo: {
-          name: 'Synra MCP Gateway',
-          version: '1.0.0',
+        serverInfo: SERVER_INFO,
+        ...(instructions ? { instructions } : {}),
+      })
+    }
+
+    // ── Discover (stateless MCP, 2026-07-28 draft) ─────────────────
+    // Newer clients (e.g. Claude) call this instead of `initialize`. It is
+    // where a server hands over its `instructions`. We only advertise the
+    // versions we implement, so a client that needs a newer one falls back
+    // to the classic `initialize` + `tools/list` flow.
+    case 'server/discover': {
+      const instructions = getConnectionInstructions(credential.config)
+
+      return jsonRpcSuccess(request, id, {
+        supportedVersions: SUPPORTED_PROTOCOL_VERSIONS,
+        capabilities: {
+          tools: { listChanged: false },
         },
+        serverInfo: SERVER_INFO,
+        _meta: { 'io.modelcontextprotocol/serverInfo': SERVER_INFO },
         ...(instructions ? { instructions } : {}),
       })
     }
