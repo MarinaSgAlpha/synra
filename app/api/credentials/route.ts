@@ -4,6 +4,7 @@ import { encrypt } from '@/lib/encryption'
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { INSTRUCTIONS_KEY, MAX_INSTRUCTIONS_LENGTH, normalizeInstructions } from '@/lib/connection-instructions'
+import { keepBlankSecrets } from '@/lib/credential-merge'
 
 /**
  * Validate and store the optional per-connection instructions on the
@@ -290,6 +291,14 @@ export async function PATCH(request: NextRequest) {
     const existingConfig = (existingCred.config || {}) as Record<string, unknown>
     if (processedConfig.allowed_tables === undefined && typeof existingConfig.allowed_tables === 'string') {
       processedConfig.allowed_tables = existingConfig.allowed_tables
+    }
+
+    // Secrets are never sent back to the browser, so the edit form leaves
+    // them blank: blank means "keep the saved one" unless the connection
+    // target changed (see lib/credential-merge.ts).
+    const secretError = keepBlankSecrets(processedConfig, existingConfig, encryptedFields)
+    if (secretError) {
+      return NextResponse.json({ error: secretError }, { status: 400 })
     }
 
     // Update credential

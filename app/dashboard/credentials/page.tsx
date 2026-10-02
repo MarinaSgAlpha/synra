@@ -768,7 +768,7 @@ export default function ConnectionsPage() {
               {editingId && (
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
                   <p className="text-xs text-blue-400">
-                    🔒 For security, sensitive fields (passwords, API keys) are encrypted and must be re-entered.
+                    🔒 Passwords and API keys are encrypted and never shown. Leave them blank to keep the saved value, or type a new one to replace it. If you change the host, port, database or username, re-enter the password.
                   </p>
                 </div>
               )}
@@ -826,8 +826,12 @@ export default function ConnectionsPage() {
                         onChange={(e) =>
                           setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))
                         }
-                        required={field.required}
-                        placeholder={field.placeholder || ''}
+                        required={field.required && !(editingId && field.encrypted)}
+                        placeholder={
+                          editingId && field.encrypted
+                            ? 'Leave blank to keep the saved value'
+                            : field.placeholder || ''
+                        }
                         autoComplete="new-password"
                         data-1p-ignore
                         data-lpignore="true"
