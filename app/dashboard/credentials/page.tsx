@@ -859,12 +859,15 @@ export default function ConnectionsPage() {
                   }
                   maxLength={MAX_INSTRUCTIONS_LENGTH}
                   rows={5}
-                  placeholder={'e.g. Use only the reporting schema. Amounts are stored in cents. Always show the SQL you ran.'}
+                  placeholder={'e.g. Orders live in the reporting schema. Amounts are stored in cents. Rows with deleted_at set are soft-deleted.'}
                   className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none mt-1 resize-y"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">
-                  Sent to the AI with every session on this connection. This is guidance, not a permission
-                  boundary. To restrict access, use a limited database user.{' '}
+                  Context the AI receives for this connection. Describe your data (schemas, units, naming
+                  rules), not how it should word its answers: AI apps such as Claude may ignore or flag style
+                  instructions from a connector. This is guidance, not a permission boundary. To restrict
+                  access, use a limited database user. After you edit it, refresh the connector in your AI
+                  app so it picks up the change.{' '}
                   <span className="text-gray-600">
                     {(configValues[INSTRUCTIONS_KEY] || '').length}/{MAX_INSTRUCTIONS_LENGTH}
                   </span>
