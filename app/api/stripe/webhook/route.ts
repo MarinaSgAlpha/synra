@@ -1,4 +1,5 @@
-import { stripe } from '@/lib/stripe/config'
+import { stripe, PLANS } from '@/lib/stripe/config'
+import { planFromPriceId } from '@/lib/stripe/plan-from-price'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rewardReferralIfEligible } from '@/lib/referrals'
 import { sendRedditConversion } from '@/lib/reddit-capi'
@@ -236,16 +237,42 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, admi
     : null
   const cancelAtPeriodEnd = subData.cancel_at_period_end || false
 
+  // A plan change made in the Stripe customer portal arrives only as a
+  // subscription update (no checkout, so no metadata). Derive the plan from
+  // the subscription's current price so limits follow what the customer is
+  // actually paying for. Unknown prices leave the plan untouched.
+  const priceId = subscription.items?.data?.[0]?.price?.id
+  const pricedPlan = planFromPriceId(priceId, PLANS)
+  const planChanged =
+    pricedPlan !== null &&
+    pricedPlan !== sub.plan &&
+    (status === 'active' || status === 'trialing')
+
   await admin
     .from('subscriptions')
     .update({
       status,
+      ...(planChanged ? { plan: pricedPlan } : {}),
       current_period_start: currentPeriodStart,
       current_period_end: currentPeriodEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
       updated_at: new Date().toISOString(),
     })
     .eq('id', sub.id)
+
+  if (planChanged) {
+    const { error: orgError } = await admin
+      .from('organizations')
+      .update({ plan: pricedPlan, updated_at: new Date().toISOString() })
+      .eq('id', sub.organization_id)
+
+    if (orgError) {
+      throw new Error(
+        `Failed to sync plan ${pricedPlan} to organization ${sub.organization_id}: ${orgError.message}`
+      )
+    }
+    console.log(`🔄 Plan changed for org ${sub.organization_id}: ${sub.plan} -> ${pricedPlan}`)
+  }
 
   console.log(`✅ Subscription updated for org ${sub.organization_id}: ${status}`)
 }
