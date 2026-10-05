@@ -19,6 +19,11 @@ interface SubscriptionDetail {
 
 const RENEWAL_BANNER_WINDOW_DAYS = 30
 
+// The "Refer a friend" card is hidden for now. Flip to true to bring it back.
+// Only the card is hidden: the referral program itself (?ref= links, the
+// 14-day trial, rewards, /api/referrals) is untouched.
+const SHOW_REFERRAL_CARD = false
+
 interface ReferralInfo {
   code: string
   link: string
@@ -81,6 +86,7 @@ export default function BillingPage() {
 
   // Referral link + stats (also lazily generates the org's code)
   useEffect(() => {
+    if (!SHOW_REFERRAL_CARD) return
     let cancelled = false
     fetch('/api/referrals')
       .then((res) => (res.ok ? res.json() : null))
@@ -412,7 +418,7 @@ export default function BillingPage() {
       )}
 
       {/* Referral program — give a month, get a month */}
-      {referral && (
+      {SHOW_REFERRAL_CARD && referral && (
         <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 mt-6">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-white font-semibold">Refer a friend, get a month free</h3>
