@@ -42,7 +42,7 @@ Not sold anymore — never offer these as options:
 
 **To start a plan (no paid plan yet):** Billing page in the left sidebar → pick Solo, Starter, or Annual.
 
-**To change plan (already paying):** Billing page → "Manage Billing" → in the Stripe page that opens, choose "Update plan" and pick the new plan. The charge is prorated automatically and the new limits apply right away. If there is no "Update plan" option, don't guess or send them in circles: tell them to email hello@mcpserver.design with the plan they want and we will switch it for them.
+**To change plan (already paying Solo, Starter, or Annual):** Billing page → under "Switch plan", click "Switch to Solo / Starter / Annual" on the plan you want. Stripe's page opens to confirm the change. The charge is prorated automatically and the new limits apply right away. ("Manage Billing" on the same page opens Stripe's full billing page, which also has "Update plan", plus card updates and cancellation.) If neither works, don't guess or send them in circles: tell them to email hello@mcpserver.design with the plan they want and we will switch it for them.
 
 Users can also add optional "Instructions for the AI" on a connection (Add/Edit Connection form). It is context sent to the AI about their data (for example which schema to use or how amounts are stored). It guides the AI but does not enforce access; to restrict access they should use a limited database user or Manage Tables. After editing it, they should refresh the connector in their AI app (in Claude: the ⋯ menu next to the connector → Refresh tools list).
 

@@ -151,6 +151,16 @@ export default function BillingPage() {
     !isPaidNoStripePortal &&
     !subscription?.stripe_customer_id
 
+  // Paying Stripe customers (Solo / Starter / Annual) with a working billing
+  // record can pick another plan right here; the change is confirmed on
+  // Stripe's page (prorated). Everyone else keeps the existing behavior.
+  const canSwitchPlan =
+    subscriptionLoaded &&
+    (isStripeSolo || isStripeStarter || isStripeAnnual) &&
+    !needsCheckoutFallback &&
+    !!subscription?.stripe_customer_id &&
+    subscription?.status !== 'canceled'
+
   const periodEndIso = subscription?.current_period_end ?? null
   const daysLeft = daysUntil(periodEndIso)
   const showRenewalBanner =
@@ -177,6 +187,28 @@ export default function BillingPage() {
       }
     } catch (err: any) {
       setBillingError(err.message || 'Failed to start checkout')
+      setBillingLoading(null)
+    }
+  }
+
+  const handleSwitchPlan = async (plan: 'solo' | 'starter' | 'annual') => {
+    setBillingLoading(plan)
+    setBillingError(null)
+    trackEvent('plan_switch_clicked', { plan, current_plan: currentPlan, source: 'billing' })
+    try {
+      const res = await fetch('/api/stripe/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error(data.error || 'Failed to start plan change')
+      }
+    } catch (err: any) {
+      setBillingError(err.message || 'Failed to start plan change')
       setBillingLoading(null)
     }
   }
@@ -298,14 +330,22 @@ export default function BillingPage() {
           post-cutoff orgs must pick a plan before adding connections) and
           for paid orgs whose Stripe billing record needs to be re-linked
           (needsCheckoutFallback) — same cards, current plan hidden. */}
-      {(isFree || needsCheckoutFallback) && (
+      {canSwitchPlan && (
+        <p className="text-sm text-gray-400 mb-3">
+          Switch plan. You&apos;ll confirm the change on Stripe&apos;s secure page, and the price
+          difference is prorated. New limits apply right away.
+        </p>
+      )}
+      {(isFree || needsCheckoutFallback || canSwitchPlan) && (
         <div className="grid md:grid-cols-3 gap-4">
           {/* Solo — entry SKU with 7-day trial */}
           {!isStripeSolo && (
           <div className="bg-[#111] border border-[#1c1c1c] rounded-lg p-6 flex flex-col relative overflow-hidden">
+            {!canSwitchPlan && (
             <div className="absolute top-0 right-0 bg-gradient-to-br from-green-500 to-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
               7-DAY FREE TRIAL
             </div>
+            )}
             <h3 className="text-white font-semibold mb-1">Solo</h3>
             <div className="flex items-baseline gap-1 mb-4">
               <span className="text-3xl font-bold text-white">$9.99</span>
@@ -319,13 +359,19 @@ export default function BillingPage() {
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Email support</span></li>
             </ul>
             <button
-              onClick={() => handleUpgrade('solo')}
+              onClick={() => (canSwitchPlan ? handleSwitchPlan('solo') : handleUpgrade('solo'))}
               disabled={billingLoading !== null}
               className="w-full px-4 py-2.5 text-sm border-2 border-blue-500 hover:border-blue-400 bg-transparent text-blue-400 hover:text-blue-300 font-medium rounded-md transition-all disabled:opacity-50"
             >
-              {billingLoading === 'solo' ? 'Redirecting...' : 'Start Free Trial'}
+              {billingLoading === 'solo'
+                ? 'Redirecting...'
+                : canSwitchPlan
+                  ? 'Switch to Solo'
+                  : 'Start Free Trial'}
             </button>
-            <p className="text-center text-[11px] text-gray-500 mt-2">Card required, cancel anytime</p>
+            {!canSwitchPlan && (
+              <p className="text-center text-[11px] text-gray-500 mt-2">Card required, cancel anytime</p>
+            )}
           </div>
           )}
 
@@ -345,11 +391,15 @@ export default function BillingPage() {
               <li className="flex items-start gap-2"><span className="text-green-400 flex-shrink-0">✓</span><span>Email support</span></li>
             </ul>
             <button
-              onClick={() => handleUpgrade('starter')}
+              onClick={() => (canSwitchPlan ? handleSwitchPlan('starter') : handleUpgrade('starter'))}
               disabled={billingLoading !== null}
               className="w-full px-4 py-2.5 text-sm border-2 border-blue-500 hover:border-blue-400 bg-transparent text-blue-400 hover:text-blue-300 font-medium rounded-md transition-all disabled:opacity-50"
             >
-              {billingLoading === 'starter' ? 'Redirecting...' : 'Choose Starter'}
+              {billingLoading === 'starter'
+                ? 'Redirecting...'
+                : canSwitchPlan
+                  ? 'Switch to Starter'
+                  : 'Choose Starter'}
             </button>
           </div>
           )}
@@ -373,11 +423,15 @@ export default function BillingPage() {
               <li className="flex items-start gap-2"><span className="text-blue-400 flex-shrink-0">★</span><span className="text-blue-400 font-medium">All updates included</span></li>
             </ul>
             <button
-              onClick={() => handleUpgrade('annual')}
+              onClick={() => (canSwitchPlan ? handleSwitchPlan('annual') : handleUpgrade('annual'))}
               disabled={billingLoading !== null}
               className="w-full px-4 py-2.5 text-sm bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-md transition-all disabled:opacity-50"
             >
-              {billingLoading === 'annual' ? 'Redirecting...' : 'Get Annual Access'}
+              {billingLoading === 'annual'
+                ? 'Redirecting...'
+                : canSwitchPlan
+                  ? 'Switch to Annual'
+                  : 'Get Annual Access'}
             </button>
             <p className="text-center text-[11px] text-gray-500 mt-2">Renews annually, cancel anytime</p>
           </div>
