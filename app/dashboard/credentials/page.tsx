@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/mixpanel'
 import { SupportChat, openAgent } from '@/components/SupportChat'
 import { hasPaidAccess } from '@/lib/subscription-access'
 import { INSTRUCTIONS_KEY, MAX_INSTRUCTIONS_LENGTH } from '@/lib/connection-instructions'
+import { looksLikeConnectionString, parseConnectionString } from '@/lib/connection-string'
 
 interface ConnectionItem {
   id: string
@@ -113,7 +114,45 @@ export default function ConnectionsPage() {
     }
   }
 
+  // Fill the form from a pasted connection string (host, port, database, user, password, SSL).
+  // Parsed entirely in the browser; the pasted text is never stored.
+  const [pasteStatus, setPasteStatus] = useState<{ ok: boolean; message: string } | null>(null)
+  const applyConnectionString = (text: string): boolean => {
+    const parsed = parseConnectionString(text)
+    if (!parsed) {
+      setPasteStatus({
+        ok: false,
+        message: "Couldn't read that. Paste a full string like postgresql://user:password@host:5432/dbname, or fill the fields below.",
+      })
+      return false
+    }
+    setConfigValues((prev) => {
+      const next: Record<string, string> = { ...prev, host: parsed.host }
+      if (parsed.port) next.port = parsed.port
+      if (parsed.database) next.database = parsed.database
+      if (parsed.user) next.user = parsed.user
+      if (parsed.password) next.password = parsed.password
+      if (parsed.ssl !== undefined) next.ssl = parsed.ssl ? 'true' : 'false'
+      return next
+    })
+    const filled = [
+      'host',
+      parsed.port && 'port',
+      parsed.database && 'database',
+      parsed.user && 'username',
+      parsed.password && 'password',
+    ].filter(Boolean)
+    setPasteStatus({
+      ok: true,
+      message: `Filled in ${filled.join(', ')}. Check the fields below, then save.${
+        parsed.password ? '' : ' No password found in the string, so enter it below.'
+      }`,
+    })
+    return true
+  }
+
   const handleSelectService = (service: SupportedService) => {
+    setPasteStatus(null)
     setSelectedService(service)
     // Default SSL to true for PostgreSQL
     const defaultConfig: Record<string, string> =
@@ -787,6 +826,48 @@ export default function ConnectionsPage() {
                 />
               </div>
 
+              {!editingId &&
+                ['postgresql', 'neon', 'mysql', 'mssql'].includes(selectedService.slug) && (
+                  <div className="rounded-md border border-blue-500/20 bg-blue-500/5 p-3">
+                    <label className="block text-sm text-gray-300 mb-1">
+                      Paste a connection string
+                      <span className="text-[11px] text-gray-500 font-normal ml-2">
+                        (optional, fills in the fields below)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      onPaste={(e) => {
+                        const text = e.clipboardData.getData('text')
+                        // If it parses, fill the form and keep the string out of the box.
+                        if (parseConnectionString(text)) {
+                          e.preventDefault()
+                          applyConnectionString(text)
+                        } else {
+                          setPasteStatus({
+                            ok: false,
+                            message:
+                              "Couldn't read that. Paste a full string like postgresql://user:password@host:5432/dbname, or fill the fields below.",
+                          })
+                        }
+                      }}
+                      placeholder="postgresql://user:password@host:5432/dbname"
+                      autoComplete="off"
+                      data-1p-ignore
+                      data-lpignore="true"
+                      className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#1c1c1c] rounded-md text-white text-sm focus:border-blue-500 focus:outline-none font-mono mt-1"
+                    />
+                    {pasteStatus && (
+                      <p className={`text-[11px] mt-2 ${pasteStatus.ok ? 'text-green-400' : 'text-amber-400'}`}>
+                        {pasteStatus.message}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-gray-600 mt-1">
+                      Read in your browser only. The pasted string isn&apos;t stored.
+                    </p>
+                  </div>
+                )}
+
               {getConfigFields(selectedService).map((field) => (
                 <div key={field.key}>
                   {field.type === 'checkbox' ? (
@@ -823,9 +904,13 @@ export default function ConnectionsPage() {
                       <input
                         type={field.type === 'password' ? 'password' : 'text'}
                         value={configValues[field.key] || ''}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          // Pasting a whole connection string into Host fills every field.
+                          if (field.key === 'host' && looksLikeConnectionString(e.target.value) && applyConnectionString(e.target.value)) {
+                            return
+                          }
                           setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                        }
+                        }}
                         required={field.required && !(editingId && field.encrypted)}
                         placeholder={
                           editingId && field.encrypted
