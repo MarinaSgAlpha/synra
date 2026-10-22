@@ -127,7 +127,9 @@ export default function ConnectionsPage() {
       return false
     }
     setConfigValues((prev) => {
-      const next: Record<string, string> = { ...prev, host: parsed.host }
+      // Only overwrite what the string contains; anything missing keeps what's already typed.
+      const next: Record<string, string> = { ...prev }
+      if (parsed.host) next.host = parsed.host
       if (parsed.port) next.port = parsed.port
       if (parsed.database) next.database = parsed.database
       if (parsed.user) next.user = parsed.user
@@ -136,7 +138,7 @@ export default function ConnectionsPage() {
       return next
     })
     const filled = [
-      'host',
+      parsed.host && 'host',
       parsed.port && 'port',
       parsed.database && 'database',
       parsed.user && 'username',
@@ -145,7 +147,7 @@ export default function ConnectionsPage() {
     setPasteStatus({
       ok: true,
       message: `Filled in ${filled.join(', ')}. Check the fields below, then save.${
-        parsed.password ? '' : ' No password found in the string, so enter it below.'
+        parsed.password || configValues.password ? '' : ' No password in the string, so enter it below.'
       }`,
     })
     return true

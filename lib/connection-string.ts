@@ -10,6 +10,7 @@
  */
 
 export interface ParsedConnection {
+  /** Empty string when the pasted text has no host (existing value is kept). */
   host: string
   port?: string
   database?: string
@@ -40,6 +41,10 @@ function splitHostPort(hostPort: string): { host: string; port?: string } {
   if (v6) return { host: v6[1], port: v6[2] }
   const match = hostPort.match(/^(.*?)(?::(\d+))?$/)
   return { host: (match?.[1] ?? hostPort).trim(), port: match?.[2] }
+}
+
+function hasAnyField(r: ParsedConnection): boolean {
+  return Boolean(r.host || r.port || r.database || r.user || r.password)
 }
 
 function parseUri(text: string): ParsedConnection | null {
@@ -106,7 +111,7 @@ function parseUri(text: string): ParsedConnection | null {
   const ssl = parseBool(get('sslmode', 'ssl', 'encrypt', 'sslaccept'))
   if (ssl !== undefined) result.ssl = ssl
 
-  return result.host ? result : null
+  return hasAnyField(result) ? result : null
 }
 
 function parseKeyValue(text: string): ParsedConnection | null {
@@ -121,7 +126,6 @@ function parseKeyValue(text: string): ParsedConnection | null {
 
   let server = pairs['server'] || pairs['data source'] || pairs['host'] || ''
   server = server.replace(/^tcp:/i, '')
-  if (!server) return null
 
   const result: ParsedConnection = { host: server }
   // SQL Server uses a comma for the port: host,1433
@@ -143,7 +147,7 @@ function parseKeyValue(text: string): ParsedConnection | null {
   const ssl = parseBool(pairs['encrypt'] ?? pairs['ssl'] ?? pairs['sslmode'])
   if (ssl !== undefined) result.ssl = ssl
 
-  return result.host ? result : null
+  return hasAnyField(result) ? result : null
 }
 
 /** Returns the parsed fields, or null if the text isn't a recognisable connection string. */
